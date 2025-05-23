@@ -44,3 +44,4 @@ async function markAsWatched(user_id, recipe_id) {
 
 exports.markAsFavorite = markAsFavorite;
 exports.getFavoriteRecipes = getFavoriteRecipes;
+exports.markAsWatched = markAsWatched;
