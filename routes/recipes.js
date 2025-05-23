@@ -66,17 +66,37 @@ router.get("/search", validation.validateRecipeSearch, async (req, res, next) =>
 });
 
 /**
- * This path returns a full details of a recipe by its id
  */
-router.get("/:recipeId", async (req, res, next) => {
   try {
-    const recipe = await recipes_utils.getRecipeDetails(req.params.recipeId);
-    res.send(recipe);
   } catch (error) {
     next(error);
   }
 });
 
+/**
+ * Get full details of a recipe by its Spoonacular ID
+ * 
+ * If user is logged in, the recipe will be marked as watched.
+ * 
+ * @route GET /recipes/:recipeId
+ * @param {string} req.params.recipeId - Spoonacular ID of the recipe to retrieve
+ * @returns {Object} Complete recipe details
+ * @returns {number} res.status - 200 on success
+ * @throws {Error} If recipe not found or API request fails
+ */
+router.get("/:recipeId", async (req, res, next) => {
+  try {
+    const recipe = await recipes_utils.getRecipeDetails(req.params.recipeId);
+    
+    // Mark as watched if user is logged in
+    if (req.session && req.session.user_id) {
+      await user_utils.markAsWatched(req.session.user_id, req.params.recipeId);
+    }
 
+    res.status(200).send(recipe);
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;
