@@ -173,15 +173,66 @@ async function searchRecipes(query, number = 5, cuisine, diet, intolerance) {
     return recipes;
 }
 
+/**
+ * Retrieves all family recipes from the database
+ * 
+ * @returns {Promise<Array>} - A promise that resolves to an array of family recipe objects
+ * @throws {Object} - Throws an error if the database operation fails or no recipes found
+ */
+async function getAllFamilyRecipes() {
+    const family_recipes = await DButils.execQuery(
+        `SELECT * FROM family_recipes`
+    );
+    
+    if (family_recipes.length === 0) {
+        throw { status: 204, message: "No family recipes found" };
     }
+
+    return family_recipes.map(recipe => ({
+        id: recipe.recipe_id,
+        title: recipe.recipe_name,
+        image: recipe.image_url,
+        owner: recipe.owner_name,
+        when: recipe.when_to_prepare,
+        ingredients: JSON.parse(recipe.ingredients),
+        instructions: recipe.instructions
+    }));
 }
 
+/**
+ * Retrieves detailed information about a specific family recipe
+ * 
+ * @param {number} recipe_id - The ID of the family recipe
+ * @returns {Promise<Object>} - A promise that resolves to the family recipe details
+ * @throws {Object} - Throws a 404 error if the recipe is not found
+ */
+async function getFamilyRecipeDetails(recipe_id) {
+    const recipes = await DButils.execQuery(
+        `SELECT * FROM family_recipes WHERE recipe_id=${recipe_id}`
+    );
+    
+    if (recipes.length === 0) {
+        throw { status: 404, message: "Family recipe not found" };
+    }
 
+    const recipe = recipes[0];
+    return {
+        id: recipe.recipe_id,
+        title: recipe.recipe_name,
+        image: recipe.image_url,
+        owner: recipe.owner_name,
+        when: recipe.when_to_prepare,
+        ingredients: JSON.parse(recipe.ingredients),
+        instructions: recipe.instructions
+    };
+}
 
 exports.getRecipeDetails = getRecipeDetails;
 exports.getRecipesPreview = getRecipesPreview;
 exports.getRandomRecipes = getRandomRecipes;
 exports.searchRecipes = searchRecipes;
+exports.getAllFamilyRecipes = getAllFamilyRecipes;
+exports.getFamilyRecipeDetails = getFamilyRecipeDetails;
 
 
 
