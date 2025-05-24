@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS private_recipes (
 -- Sample data for quick testing
 INSERT INTO users (username, firstname, lastname, country, password, email, profilePic)
 VALUES 
-('testuser', 'Test', 'User', 'Israel', '$2b$13$CW.w9BJ2U5iHmP5JNghOFOh2jH1Va/lY.z7pTAaLDBfn1XhmehAuK', 'test@example.com', NULL); -- Password is "password"
+('testuser', 'Test', 'User', 'Israel', '$2b$13$IHs1nKpj595BQTtR2Qs6rOi1TCOGvAB6fVrOIt.6tyiz2rbocA9L2', 'test@example.com', NULL); -- Password is "password"
 
 -- Sample family recipes
 INSERT INTO family_recipes (user_id, recipe_name, owner_name, when_to_prepare, ingredients, instructions, image_url)
