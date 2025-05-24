@@ -1,8 +1,16 @@
 const DButils = require("./DButils");
 
+/**
+ * Saves a recipe to a user's favorites list
+ * 
+ * @param {number} user_id - The ID of the user
+ * @param {number} recipe_id - The ID of the recipe to mark as favorite
+ * @returns {Promise<void>} - A promise that resolves when the recipe is marked as favorite
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
 async function markAsFavorite(user_id, recipe_id){
     try {
-        await DButils.execQuery(`INSERT INTO FavoriteRecipes VALUES ('${user_id}',${recipe_id})`);
+        await DButils.execQuery(`INSERT INTO favorite_recipes VALUES ('${user_id}',${recipe_id})`);
     } catch (error) {
         // Check if it's a duplicate entry error
         if (error.code === 'ER_DUP_ENTRY') {
@@ -22,7 +30,7 @@ async function markAsFavorite(user_id, recipe_id){
  */
 async function getFavoriteRecipes(user_id){
     try {
-        const recipes_id = await DButils.execQuery(`SELECT recipe_id FROM FavoriteRecipes WHERE user_id='${user_id}'`);
+        const recipes_id = await DButils.execQuery(`SELECT recipe_id FROM favorite_recipes WHERE user_id='${user_id}'`);
         return recipes_id;
     } catch (error) {
         console.log(`Error retrieving favorite recipes for user ${user_id}: ${error.message}`);
@@ -40,7 +48,7 @@ async function getFavoriteRecipes(user_id){
  */
 async function removeFavorite(user_id, recipe_id) {
     try {
-        const result = await DButils.execQuery(`DELETE FROM FavoriteRecipes WHERE user_id='${user_id}' AND recipe_id='${recipe_id}'`);
+        const result = await DButils.execQuery(`DELETE FROM favorite_recipes WHERE user_id='${user_id}' AND recipe_id='${recipe_id}'`);
         // Check if any row was affected
         return result.affectedRows > 0;
     } catch (error) {
@@ -61,18 +69,18 @@ async function markAsWatched(user_id, recipe_id) {
     try {
         // First check if the recipe is already watched by this user
         const existingWatch = await DButils.execQuery(
-            `SELECT * FROM watchedrecipes WHERE user_id='${user_id}' AND recipe_id='${recipe_id}'`
+            `SELECT * FROM watched_recipes WHERE user_id='${user_id}' AND recipe_id='${recipe_id}'`
         );
 
         if (existingWatch.length > 0) {
             // Update the timestamp if already watched
             await DButils.execQuery(
-                `UPDATE watchedrecipes SET watched_at=CURRENT_TIMESTAMP WHERE user_id='${user_id}' AND recipe_id='${recipe_id}'`
+                `UPDATE watched_recipes SET watched_at=CURRENT_TIMESTAMP WHERE user_id='${user_id}' AND recipe_id='${recipe_id}'`
             );
         } else {
             // Insert new watched record if not watched before
             await DButils.execQuery(
-                `INSERT INTO watchedrecipes (user_id, recipe_id) VALUES ('${user_id}', '${recipe_id}')`
+                `INSERT INTO watched_recipes (user_id, recipe_id) VALUES ('${user_id}', '${recipe_id}')`
             );
         }
     } catch (error) {
@@ -91,7 +99,7 @@ async function markAsWatched(user_id, recipe_id) {
 async function getWatchedRecipes(user_id) {
     try {
         const recipes_id = await DButils.execQuery(
-            `SELECT recipe_id FROM watchedrecipes WHERE user_id='${user_id}' ORDER BY watched_at DESC`
+            `SELECT recipe_id FROM watched_recipes WHERE user_id='${user_id}' ORDER BY watched_at DESC`
         );
         
         return recipes_id;
@@ -112,7 +120,7 @@ async function getWatchedRecipes(user_id) {
 async function getLastWatchedRecipes(user_id, limit = 3) {
     try {
         const recipes_id = await DButils.execQuery(
-            `SELECT recipe_id FROM watchedrecipes WHERE user_id='${user_id}' ORDER BY watched_at DESC LIMIT ${limit}`
+            `SELECT recipe_id FROM watched_recipes WHERE user_id='${user_id}' ORDER BY watched_at DESC LIMIT ${limit}`
         );
         
         return recipes_id;
@@ -131,7 +139,7 @@ async function getLastWatchedRecipes(user_id, limit = 3) {
  */
 async function deleteAllWatchedRecipes(user_id) {
     try {
-        const result = await DButils.execQuery(`DELETE FROM watchedrecipes WHERE user_id='${user_id}'`);
+        const result = await DButils.execQuery(`DELETE FROM watched_recipes WHERE user_id='${user_id}'`);
         return result.affectedRows;
     } catch (error) {
         console.log(`Error deleting watched recipes for user ${user_id}: ${error.message}`);
