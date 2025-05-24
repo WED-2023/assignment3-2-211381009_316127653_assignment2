@@ -18,6 +18,7 @@ exports.execQuery = async function (query) {
     try {
     await connection.query("START TRANSACTION");
     returnValue = await connection.query(query);
+    await connection.query("COMMIT");
   } catch (err) {
     await connection.query("ROLLBACK");
     console.log('ROLLBACK at querySignUp', err);
