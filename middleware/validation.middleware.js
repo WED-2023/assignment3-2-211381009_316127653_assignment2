@@ -5,23 +5,52 @@
  * in various API requests to ensure data integrity and security.
  */
 
+const axios = require('axios');
+
+// Cache for countries to avoid repeated API calls
+let countriesCache = null;
+let cacheTimestamp = null;
+
+/**
+ * Gets a list of valid country names from the REST Countries API
+ * 
+ * @returns {Promise<Array<string>>} Array of country common names
+ */
+async function getValidCountries() {
+  // Use cache if available and less than 24 hours old
+  if (countriesCache && cacheTimestamp && (Date.now() - cacheTimestamp < 86400000)) {
+    return countriesCache;
+  }
+  
+  try {
+    const response = await axios.get('https://restcountries.com/v3.1/all');
+    // Extract country common names
+    countriesCache = response.data.map(country => country.name.common);
+    cacheTimestamp = Date.now();
+    return countriesCache;
+  } catch (error) {
+    console.error("Error fetching countries:", error.message);
+    // Return empty array if API call fails
+    return [];
+  }
+}
+
 /**
  * Validates user registration input data
  * 
  * Checks for required fields, proper username format (3-8 letters),
  * password complexity (5-10 chars with at least one number and special character),
- * and valid email format.
+ * valid email format, and valid country from REST Countries API.
  *
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  * @returns {Object} Error response if validation fails, otherwise calls next()
  */
-function validateRegister(req, res, next) {
-  const { username, password, email } = req.body;
-  
-  // Basic validations
-  if (!username || !password || !email) {
+async function validateRegister(req, res, next) {
+  const { username, password, email, country } = req.body;
+    // Basic validations
+  if (!username || !password || !email || !country) {
     return res.status(400).send({ message: "Missing required fields", success: false });
   }
   
@@ -47,6 +76,20 @@ function validateRegister(req, res, next) {
       message: "Invalid email format",
       success: false 
     });
+  }
+  
+  // Country validation
+  try {
+    const validCountries = await getValidCountries();
+    if (validCountries.length > 0 && !validCountries.includes(country)) {
+      return res.status(400).send({ 
+        message: "Invalid country. Please select a valid country from the list",
+        success: false 
+      });
+    }
+  } catch (error) {
+    console.error("Country validation error:", error.message);
+    // We can either fail or continue - here we choose to continue if the API call fails
   }
   
   next();
