@@ -88,10 +88,11 @@ router.get("/:recipeId", async (req, res, next) => {
   try {
     const recipe = await recipes_utils.getRecipeDetails(req.params.recipeId);
     
-    // Mark as watched if user is logged in
-    if (req.session && req.session.user_id) {
-      await user_utils.markAsWatched(req.session.user_id, req.params.recipeId);
-    }
+    // Mark as watched if user is logged in, better to have a separate endpoint for this
+    // Using this for debugging purposes, uncomment when needed
+    // if (req.session && req.session.user_id) {
+    //   await user_utils.markAsWatched(req.session.user_id, req.params.recipeId);
+    // }
 
     res.status(200).send(recipe);
   } catch (error) {
