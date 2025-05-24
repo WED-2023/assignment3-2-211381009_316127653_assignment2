@@ -40,8 +40,69 @@ async function markAsWatched(user_id, recipe_id) {
         console.log(`Error marking recipe ${recipe_id} as watched for user ${user_id}: ${error.message}`);
         throw { status: 500, message: "Failed to mark recipe as watched", error: error };
     }
+}
 
+/**
+ * Retrieves all watched recipes for a user, ordered by most recently watched
+ * 
+ * @param {number} user_id - The ID of the user
+ * @returns {Promise<Array>} - A promise that resolves to an array of recipe IDs
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
+async function getWatchedRecipes(user_id) {
+    try {
+        const recipes_id = await DButils.execQuery(
+            `SELECT recipe_id FROM watchedrecipes WHERE user_id='${user_id}' ORDER BY watched_at DESC`
+        );
+        
+        return recipes_id;
+    } catch (error) {
+        console.log(`Error retrieving watched recipes for user ${user_id}: ${error.message}`);
+        throw { status: 500, message: "Failed to retrieve watched recipes", error: error };
+    }
+}
+
+/**
+ * Retrieves the most recently watched recipes for a user, limited to a specified number
+ * 
+ * @param {number} user_id - The ID of the user
+ * @param {number} limit - Maximum number of recipes to return (default: 3)
+ * @returns {Promise<Array>} - A promise that resolves to an array of recipe IDs
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
+async function getLastWatchedRecipes(user_id, limit = 3) {
+    try {
+        const recipes_id = await DButils.execQuery(
+            `SELECT recipe_id FROM watchedrecipes WHERE user_id='${user_id}' ORDER BY watched_at DESC LIMIT ${limit}`
+        );
+        
+        return recipes_id;
+    } catch (error) {
+        console.log(`Error retrieving last watched recipes for user ${user_id}: ${error.message}`);
+        throw { status: 500, message: "Failed to retrieve recently watched recipes", error: error };
+    }
+}
+
+/**
+ * Deletes all watched recipes for a user
+ * 
+ * @param {number} user_id - The ID of the user
+ * @returns {Promise<number>} - A promise that resolves to the number of deleted records
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
+async function deleteAllWatchedRecipes(user_id) {
+    try {
+        const result = await DButils.execQuery(`DELETE FROM watchedrecipes WHERE user_id='${user_id}'`);
+        return result.affectedRows;
+    } catch (error) {
+        console.log(`Error deleting watched recipes for user ${user_id}: ${error.message}`);
+        throw { status: 500, message: "Failed to delete watched recipes history", error: error };
+    }
+}
 
 exports.markAsFavorite = markAsFavorite;
 exports.getFavoriteRecipes = getFavoriteRecipes;
 exports.markAsWatched = markAsWatched;
+exports.getWatchedRecipes = getWatchedRecipes;
+exports.getLastWatchedRecipes = getLastWatchedRecipes;
+exports.deleteAllWatchedRecipes = deleteAllWatchedRecipes;
