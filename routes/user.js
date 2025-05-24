@@ -219,6 +219,92 @@ router.get('/lastSearch', async (req, res, next) => {
   }
 });
 
+/**
+ * Get all private recipes created by the user
+ * 
+ * @route GET /users/myRecipes
+ * @authentication Required
+ * @returns {Array<Object>} Array of private recipe preview objects
+ * @returns {number} res.status - 200 on success
+ * @throws {Error} If database query fails
+ */
+router.get('/myRecipes', async (req, res, next) => {
+  try {
+    const user_id = req.session.user_id;
+    const recipes = await user_utils.getPrivateRecipes(user_id);
+    res.status(200).send(recipes);
+  } catch (error) {
+    next(error);
+  }
+});
 
+/**
+ * Add a new private recipe for the user
+ * 
+ * @route POST /users/myRecipes
+ * @authentication Required
+ * @validation validatePrivateRecipe
+ * @param {Object} req.body - Recipe details
+ * @param {string} req.body.title - Recipe title (required)
+ * @param {number} [req.body.readyInMinutes] - Preparation time in minutes
+ * @param {string} [req.body.image] - Recipe image URL
+ * @param {number} [req.body.popularity] - Recipe popularity rating
+ * @param {boolean} [req.body.vegan] - Whether the recipe is vegan
+ * @param {boolean} [req.body.vegetarian] - Whether the recipe is vegetarian
+ * @param {boolean} [req.body.glutenFree] - Whether the recipe is gluten-free
+ * @param {Array} [req.body.ingredients] - List of ingredients
+ * @param {string} [req.body.instructions] - Preparation instructions
+ * @param {number} req.body.servings - Number of servings (required)
+ * @returns {Object} Success message with recipe_id
+ * @returns {number} res.status - 201 on success
+ * @throws {Error} If validation fails or database operation fails
+ */
+router.post('/myRecipes', validation.validatePrivateRecipe, async (req, res, next) => {
+  try {
+    const user_id = req.session.user_id;
+    const recipe_details = req.body;
+    
+    const recipe_id = await user_utils.addPrivateRecipe(user_id, recipe_details);
+    res.status(201).send({ 
+      message: "Recipe created successfully", 
+      success: true, 
+      recipe_id: recipe_id 
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Get full details of a specific private recipe
+ * 
+ * @route GET /users/myRecipes/:recipeId
+ * @authentication Required
+ * @param {string} req.params.recipeId - ID of the private recipe to retrieve
+ * @returns {Object} Complete recipe details
+ * @returns {number} res.status - 200 on success
+ * @throws {Error} If recipe not found or not owned by user
+ */
+router.get('/myRecipes/:recipeId', async (req, res, next) => {
+  try {
+    const user_id = req.session.user_id;
+    const recipe_id = req.params.recipeId;
+    
+    const recipe = await user_utils.getPrivateRecipeDetails(recipe_id, user_id);
+    res.status(200).send(recipe);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Get all family recipes for the logged-in user
+ * 
+ * @route GET /users/familyRecipes
+ * @authentication Required
+ * @returns {Array<Object>} Array of family recipe objects
+ * @returns {number} res.status - 200 on success, 204 when fewer than 3 recipes
+ * @throws {Error} If database query fails
+ */
 
 module.exports = router;

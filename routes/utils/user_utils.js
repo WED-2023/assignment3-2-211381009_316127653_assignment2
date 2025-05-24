@@ -147,6 +147,130 @@ async function deleteAllWatchedRecipes(user_id) {
     }
 }
 
+/**
+ * Adds a new private recipe for a user
+ * 
+ * @param {number} user_id - The ID of the user
+ * @param {Object} recipe_details - Details of the recipe to add
+ * @param {string} recipe_details.title - Title of the recipe
+ * @param {number} recipe_details.readyInMinutes - Preparation time in minutes
+ * @param {string} recipe_details.image - URL of the recipe image
+ * @param {number} recipe_details.popularity - Popularity rating
+ * @param {boolean} recipe_details.vegan - Whether the recipe is vegan
+ * @param {boolean} recipe_details.vegetarian - Whether the recipe is vegetarian
+ * @param {boolean} recipe_details.glutenFree - Whether the recipe is gluten-free
+ * @param {Array} recipe_details.ingredients - List of ingredients
+ * @param {string} recipe_details.instructions - Preparation instructions
+ * @param {number} recipe_details.servings - Number of servings
+ * @returns {Promise<number>} - A promise that resolves to the new recipe ID
+ * @throws {Object} - Throws an error if required parameters are missing or if database operation fails
+ */
+async function addPrivateRecipe(user_id, recipe_details) {
+    try {
+        const { title, readyInMinutes, image, popularity, vegan, vegetarian, glutenFree, ingredients, instructions, servings } = recipe_details;
+        
+        // Validate required fields
+        if (!title || !servings) {
+            throw { status: 400, message: "Missing required parameters" };
+        }
+        
+        // Store ingredients as JSON string
+        const ingredientsJson = JSON.stringify(ingredients || []);
+        const instructionsText = instructions || '';
+        
+        const result = await DButils.execQuery(
+            `INSERT INTO private_recipes  (user_id, title, readyInMinutes, image_url, popularity, 
+             vegan, vegetarian, gluten_free, ingredients, instructions, servings) 
+             VALUES ('${user_id}', '${title}', '${readyInMinutes || 0}', '${image || ""}', '${popularity || 0}',
+             '${vegan || 0}', '${vegetarian || 0}', '${glutenFree || 0}', 
+             '${ingredientsJson}', '${instructionsText}', '${servings}')`
+        );
+
+        return result.insertId;
+    } catch (error) {
+        // If it's not our custom validation error
+        if (!error.status) {
+            console.log(`Error adding private recipe for user ${user_id}: ${error.message}`);
+            throw { status: 500, message: "Failed to create private recipe", error: error };
+        }
+        throw error; // Re-throw validation errors
+    }
+}
+
+/**
+ * Retrieves all private recipes for a user
+ * 
+ * @param {number} user_id - The ID of the user
+ * @returns {Promise<Array>} - A promise that resolves to an array of recipe objects
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
+async function getPrivateRecipes(user_id) {
+    try {
+        const recipes = await DButils.execQuery(
+            `SELECT * FROM private_recipes  WHERE user_id='${user_id}'`
+        );
+        
+        // Map SQL results to desired format
+        return recipes.map(recipe => ({
+            id: recipe.recipe_id,
+            title: recipe.title,
+            readyInMinutes: recipe.readyInMinutes,
+            image: recipe.image_url,
+            popularity: recipe.popularity,
+            vegan: recipe.vegan === 1,
+            vegetarian: recipe.vegetarian === 1,
+            glutenFree: recipe.gluten_free === 1
+        }));
+    } catch (error) {
+        console.log(`Error retrieving private recipes for user ${user_id}: ${error.message}`);
+        throw { status: 500, message: "Failed to retrieve private recipes", error: error };
+    }
+}
+
+/**
+ * Retrieves detailed information about a specific private recipe
+ * 
+ * @param {number} recipe_id - The ID of the recipe to retrieve
+ * @param {number} user_id - The ID of the user who owns the recipe
+ * @returns {Promise<Object>} - A promise that resolves to the recipe details
+ * @throws {Object} - Throws a 404 error if the recipe is not found, or a 500 error if the database operation fails
+ */
+async function getPrivateRecipeDetails(recipe_id, user_id) {
+    try {
+        const recipes = await DButils.execQuery(
+            `SELECT * FROM private_recipes  WHERE recipe_id='${recipe_id}' AND user_id='${user_id}'`
+        );
+        
+        // Check if recipe exists and belongs to the user
+        if (recipes.length === 0) {
+            throw { status: 404, message: "Private recipe not found" };
+        }
+        
+        // Format the recipe data
+        const recipe = recipes[0];
+        return {
+            id: recipe.recipe_id,
+            title: recipe.title,
+            readyInMinutes: recipe.readyInMinutes,
+            image: recipe.image_url,
+            popularity: recipe.popularity,
+            vegan: recipe.vegan === 1,
+            vegetarian: recipe.vegetarian === 1,
+            glutenFree: recipe.gluten_free === 1,
+            ingredients: JSON.parse(recipe.ingredients),
+            instructions: recipe.instructions,
+            servings: recipe.servings
+        };
+    } catch (error) {
+        // If it's not our custom not found error
+        if (!error.status) {
+            console.log(`Error retrieving private recipe ${recipe_id} for user ${user_id}: ${error.message}`);
+            throw { status: 500, message: "Failed to retrieve private recipe details", error: error };
+        }
+        throw error; // Re-throw not found error
+    }
+}
+
 exports.markAsFavorite = markAsFavorite;
 exports.getFavoriteRecipes = getFavoriteRecipes;
 exports.removeFavorite = removeFavorite;
@@ -154,3 +278,6 @@ exports.markAsWatched = markAsWatched;
 exports.getWatchedRecipes = getWatchedRecipes;
 exports.getLastWatchedRecipes = getLastWatchedRecipes;
 exports.deleteAllWatchedRecipes = deleteAllWatchedRecipes;
+exports.addPrivateRecipe = addPrivateRecipe;
+exports.getPrivateRecipes = getPrivateRecipes;
+exports.getPrivateRecipeDetails = getPrivateRecipeDetails;
