@@ -1,14 +1,53 @@
 const DButils = require("./DButils");
 
 async function markAsFavorite(user_id, recipe_id){
-    await DButils.execQuery(`insert into FavoriteRecipes values ('${user_id}',${recipe_id})`);
+    try {
+        await DButils.execQuery(`INSERT INTO FavoriteRecipes VALUES ('${user_id}',${recipe_id})`);
+    } catch (error) {
+        // Check if it's a duplicate entry error
+        if (error.code === 'ER_DUP_ENTRY') {
+            throw { status: 409, message: "Recipe is already in favorites", error: error };
+        }
+        console.log(`Error marking recipe ${recipe_id} as favorite for user ${user_id}: ${error.message}`);
+        throw { status: 500, message: "Failed to save recipe as favorite", error: error };
+    }
 }
 
+/**
+ * Retrieves all favorite recipes for a user
+ * 
+ * @param {number} user_id - The ID of the user
+ * @returns {Promise<Array>} - A promise that resolves to an array of recipe IDs
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
 async function getFavoriteRecipes(user_id){
-    const recipes_id = await DButils.execQuery(`select recipe_id from FavoriteRecipes where user_id='${user_id}'`);
-    return recipes_id;
+    try {
+        const recipes_id = await DButils.execQuery(`SELECT recipe_id FROM FavoriteRecipes WHERE user_id='${user_id}'`);
+        return recipes_id;
+    } catch (error) {
+        console.log(`Error retrieving favorite recipes for user ${user_id}: ${error.message}`);
+        throw { status: 500, message: "Failed to retrieve favorite recipes", error: error };
+    }
 }
 
+/**
+ * Removes a recipe from a user's favorites list
+ * 
+ * @param {number} user_id - The ID of the user
+ * @param {number} recipe_id - The ID of the recipe to remove
+ * @returns {Promise<boolean>} - A promise that resolves to true if a recipe was removed, false if it wasn't in favorites
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
+async function removeFavorite(user_id, recipe_id) {
+    try {
+        const result = await DButils.execQuery(`DELETE FROM FavoriteRecipes WHERE user_id='${user_id}' AND recipe_id='${recipe_id}'`);
+        // Check if any row was affected
+        return result.affectedRows > 0;
+    } catch (error) {
+        console.log(`Error removing recipe ${recipe_id} from favorites for user ${user_id}: ${error.message}`);
+        throw { status: 500, message: "Failed to remove recipe from favorites", error: error };
+    }
+}
 
 /**
  * Marks a recipe as watched by a user, updating the timestamp if already watched
@@ -102,6 +141,7 @@ async function deleteAllWatchedRecipes(user_id) {
 
 exports.markAsFavorite = markAsFavorite;
 exports.getFavoriteRecipes = getFavoriteRecipes;
+exports.removeFavorite = removeFavorite;
 exports.markAsWatched = markAsWatched;
 exports.getWatchedRecipes = getWatchedRecipes;
 exports.getLastWatchedRecipes = getLastWatchedRecipes;

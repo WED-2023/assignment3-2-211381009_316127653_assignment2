@@ -38,20 +38,34 @@ router.post('/favorites', async (req,res,next) => {
   try{
     const user_id = req.session.user_id;
     const recipe_id = req.body.recipeId;
-    await user_utils.markAsFavorite(user_id,recipe_id);
-    res.status(200).send("The Recipe successfully saved as favorite");
-    } catch(error){
+    
+    // Check if recipe exists in Spoonacular
+    try {
+      await recipe_utils.getRecipeDetails(recipe_id);
+    } catch (err) {
+      res.status(400).send({ message: "Recipe does not exist", success: false });
+      return;
+    }
+    
+    await user_utils.markAsFavorite(user_id, recipe_id);
+    res.status(200).send({ message: "Recipe successfully saved as favorite", success: true });
+  } catch (error) {
     next(error);
   }
-})
+});
 
 /**
- * This path returns the favorites recipes that were saved by the logged-in user
+ * Get all favorite recipes for the logged-in user
+ * 
+ * @route GET /users/favorites
+ * @authentication Required
+ * @returns {Array<Object>} Array of recipe preview objects
+ * @returns {number} res.status - 200 on success
+ * @throws {Error} If database query fails
  */
 router.get('/favorites', async (req,res,next) => {
   try{
     const user_id = req.session.user_id;
-    let favorite_recipes = {};
     const recipes_id = await user_utils.getFavoriteRecipes(user_id);
     let recipes_id_array = [];
     recipes_id.map((element) => recipes_id_array.push(element.recipe_id)); //extracting the recipe ids into array
@@ -59,6 +73,33 @@ router.get('/favorites', async (req,res,next) => {
     res.status(200).send(results);
   } catch(error){
     next(error); 
+  }
+});
+
+/**
+ * Remove a recipe from user's favorites list
+ * 
+ * @route DELETE /users/favorites
+ * @authentication Required
+ * @param {number} req.query.recipeId - ID of the recipe to remove from favorites
+ * @returns {Object} Success message
+ * @returns {number} res.status - 200 on success, 404 if recipe was not in favorites
+ * @throws {Error} If database operation fails
+ */
+router.delete('/favorites', async (req, res, next) => {
+  try {
+    const user_id = req.session.user_id;
+    const recipe_id = req.query.recipeId;
+    
+    const removed = await user_utils.removeFavorite(user_id, recipe_id);
+    
+    if (removed) {
+      res.status(200).send({ message: "Recipe successfully removed from favorites", success: true });
+    } else {
+      res.status(404).send({ message: "Recipe was not in favorites", success: false });
+    }
+  } catch (error) {
+    next(error);
   }
 });
 
