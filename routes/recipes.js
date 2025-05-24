@@ -4,7 +4,6 @@
  * This module handles all API endpoints related to recipes, including:
  * - Random recipe retrieval
  * - Recipe search
- * - Family recipes
  * - Recipe details
  */
 var express = require("express");
