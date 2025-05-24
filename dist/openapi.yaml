@@ -105,48 +105,6 @@ paths:
         "500":
           description: Internal server error
 
-  /recipes/allFamily:
-    get:
-      tags:
-        - Recipes
-      summary: Get all family recipes
-      description: Fetches all the family recipes for the logged-in user (suppose to be at least 3).
-      responses:
-        "200":
-          description: List of all family recipes
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/previewFamilyRecipe"
-        "204":
-          description: suppose to be at least 3 family recipes, there is less
-        "401":
-          description: User not logged in
-
-  /recipes/FAMILY/{recipeId}:
-    get:
-      tags:
-        - Recipes
-      summary: Get full details of a family recipe
-      description: Returns full details of a family recipe identified by the recipeId.
-      parameters:
-        - in: path
-          name: recipeId
-          required: true
-          schema:
-            type: string
-            description: Family recipe unique ID
-      responses:
-        "200":
-          description: Family recipe full details
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FullFamilyRecipe"
-        "404":
-          description: Family recipe not found
 
   /users/markwatched/{recipeId}:
     post:
@@ -293,7 +251,7 @@ paths:
         "401":
           description: Unauthorized
 
-  /users/my_recipes:
+  /users/myRecipes:
     get:
       tags:
         - Users
@@ -330,7 +288,7 @@ paths:
         "401":
           description: Unauthorized
 
-  /users/my_recipes/{recipeId}:
+  /users/myRecipes/{recipeId}:
     get:
       tags:
         - Users
@@ -408,6 +366,113 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/previewRecipe"
+        "401":
+          description: Unauthorized
+
+  /users/familyRecipes:
+    get:
+      tags:
+        - Users
+      summary: Get all family recipes
+      description: Fetches all the family recipes for the logged-in user (suppose to be at least 3).
+      responses:
+        "200":
+          description: List of all family recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/previewFamilyRecipe"
+        "204":
+          description: Suppose to be at least 3 family recipes, there is less
+        "401":
+          description: User not logged in
+    post:
+      tags:
+        - Users
+      summary: Add a new family recipe
+      description: Creates a new family recipe for the logged-in user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewFamilyRecipe"
+      responses:
+        "201":
+          description: Family recipe created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Family recipe created successfully"
+                  success:
+                    type: boolean
+                    example: true
+                  recipe_id:
+                    type: integer
+                    example: 123
+        "400":
+          description: Missing required parameters
+        "401":
+          description: User not logged in
+
+  /users/familyRecipes/{recipeId}:
+    get:
+      tags:
+        - Users
+      summary: Get full details of a family recipe
+      description: Returns full details of a family recipe identified by the recipeId.
+      parameters:
+        - in: path
+          name: recipeId
+          required: true
+          schema:
+            type: string
+            description: Family recipe unique ID
+      responses:
+        "200":
+          description: Family recipe full details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FullFamilyRecipe"
+        "404":
+          description: Family recipe not found
+        "401":
+          description: Unauthorized
+    delete:
+      tags:
+        - Users
+      summary: Delete a family recipe
+      description: Deletes a family recipe owned by the logged-in user.
+      parameters:
+        - in: path
+          name: recipeId
+          required: true
+          schema:
+            type: integer
+            description: Family recipe unique ID
+      responses:
+        "200":
+          description: Family recipe deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Family recipe deleted successfully"
+                  success:
+                    type: boolean
+                    example: true
+        "404":
+          description: Family recipe not found or doesn't belong to the user
         "401":
           description: Unauthorized
 
