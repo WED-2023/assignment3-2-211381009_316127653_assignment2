@@ -16,15 +16,15 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY username_UNIQUE (username)
 );
 
--- Create FavoriteRecipes table
-CREATE TABLE IF NOT EXISTS FavoriteRecipes (
+-- Create favorite_recipes table
+CREATE TABLE IF NOT EXISTS favorite_recipes (
     user_id INT NOT NULL,
     recipe_id INT NOT NULL,
     PRIMARY KEY (user_id, recipe_id)
 );
 
--- Create watchedrecipes table
-CREATE TABLE IF NOT EXISTS watchedrecipes (
+-- Create watched_recipes table
+CREATE TABLE IF NOT EXISTS watched_recipes (
     user_id INT NOT NULL COMMENT 'User ID',
     recipe_id INT NOT NULL COMMENT 'Recipe ID',
     watched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Watched Timestamp',
@@ -45,8 +45,8 @@ CREATE TABLE IF NOT EXISTS family_recipes (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- Create private_recipes table
-CREATE TABLE IF NOT EXISTS private_recipes (
+-- Create private_recipes  table
+CREATE TABLE IF NOT EXISTS private_recipes  (
     recipe_id INT NOT NULL AUTO_INCREMENT COMMENT 'Recipe ID',
     user_id INT NOT NULL COMMENT 'User ID',
     title VARCHAR(100) NOT NULL COMMENT 'Recipe Title',
