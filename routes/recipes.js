@@ -64,13 +64,8 @@ router.get("/search", validation.validateRecipeSearch, async (req, res, next) =>
   }
 });
 
-/**
- */
-  try {
-  } catch (error) {
-    next(error);
-  }
-});
+
+
 
 /**
  * Get full details of a recipe by its Spoonacular ID

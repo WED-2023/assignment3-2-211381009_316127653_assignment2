@@ -327,83 +327,7 @@ async function getFamilyRecipeDetails(recipe_id, user_id) {
     };
 }
 
-/**
- * Adds a new family recipe for a user
- * 
- * @param {number} user_id - The ID of the user
- * @param {Object} recipe_details - Details of the family recipe to add
- * @param {string} recipe_details.recipe_name - Name of the recipe
- * @param {string} recipe_details.owner_name - Name of the family member who created the recipe
- * @param {string} recipe_details.when_to_prepare - Description of when this recipe is traditionally prepared
- * @param {Array} recipe_details.ingredients - List of ingredients
- * @param {string} recipe_details.instructions - Preparation instructions
- * @param {string} recipe_details.image_url - URL of the recipe image (optional)
- * @returns {Promise<number>} - A promise that resolves to the new recipe ID
- * @throws {Object} - Throws an error if required parameters are missing or if database operation fails
- */
-async function addFamilyRecipe(user_id, recipe_details) {
-    try {
-        const { recipe_name, owner_name, when_to_prepare, ingredients, instructions, image_url } = recipe_details;
-        
-        // Validate required fields
-        if (!recipe_name || !owner_name || !instructions || !ingredients) {
-            throw { status: 400, message: "Missing required parameters" };
-        }
-        
-        // Store ingredients as JSON string
-        const ingredientsJson = JSON.stringify(ingredients || []);
-        
-        const result = await DButils.execQuery(
-            `INSERT INTO family_recipes (user_id, recipe_name, owner_name, when_to_prepare, ingredients, instructions, image_url) 
-             VALUES ('${user_id}', '${recipe_name}', '${owner_name}', '${when_to_prepare || ""}', 
-             '${ingredientsJson}', '${instructions}', '${image_url || ""}')`
-        );
 
-        return result.insertId;
-    } catch (error) {
-        // If it's not our custom validation error
-        if (!error.status) {
-            console.log(`Error adding family recipe for user ${user_id}: ${error.message}`);
-            throw { status: 500, message: "Failed to create family recipe", error: error };
-        }
-        throw error; // Re-throw validation errors
-    }
-}
-
-/**
- * Deletes a family recipe
- * 
- * @param {number} user_id - The ID of the user who owns the recipe
- * @param {number} recipe_id - The ID of the recipe to delete
- * @returns {Promise<boolean>} - A promise that resolves to true if the recipe was deleted
- * @throws {Object} - Throws an error if the recipe doesn't exist or doesn't belong to the user
- */
-async function deleteFamilyRecipe(user_id, recipe_id) {
-    try {
-        // First check if the recipe exists and belongs to the user
-        const recipe = await DButils.execQuery(
-            `SELECT * FROM family_recipes WHERE recipe_id=${recipe_id} AND user_id=${user_id}`
-        );
-        
-        if (recipe.length === 0) {
-            throw { status: 404, message: "Family recipe not found or doesn't belong to you" };
-        }
-        
-        // Delete the recipe
-        await DButils.execQuery(
-            `DELETE FROM family_recipes WHERE recipe_id=${recipe_id} AND user_id=${user_id}`
-        );
-        
-        return true;
-    } catch (error) {
-        // If it's not our custom not found error
-        if (!error.status) {
-            console.log(`Error deleting family recipe ${recipe_id} for user ${user_id}: ${error.message}`);
-            throw { status: 500, message: "Failed to delete family recipe", error: error };
-        }
-        throw error; // Re-throw not found error
-    }
-}
 
 exports.markAsFavorite = markAsFavorite;
 exports.getFavoriteRecipes = getFavoriteRecipes;
@@ -417,5 +341,4 @@ exports.getPrivateRecipes = getPrivateRecipes;
 exports.getPrivateRecipeDetails = getPrivateRecipeDetails;
 exports.getAllFamilyRecipes = getAllFamilyRecipes;
 exports.getFamilyRecipeDetails = getFamilyRecipeDetails;
-exports.addFamilyRecipe = addFamilyRecipe;
-exports.deleteFamilyRecipe = deleteFamilyRecipe;
+

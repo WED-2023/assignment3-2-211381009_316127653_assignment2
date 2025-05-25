@@ -173,8 +173,6 @@ async function searchRecipes(query, number = 5, cuisine, diet, intolerance) {
     return recipes;
 }
 
-    }
-}
 
 
 

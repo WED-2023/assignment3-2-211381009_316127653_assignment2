@@ -341,62 +341,7 @@ router.get('/familyRecipes/:recipeId', async (req, res, next) => {
   }
 });
 
-/**
- * Add a new family recipe
- * 
- * @route POST /users/familyRecipes
- * @authentication Required
- * @param {Object} req.body - Family recipe details
- * @param {string} req.body.recipe_name - Name of the recipe
- * @param {string} req.body.owner_name - Name of the family member who created the recipe
- * @param {string} req.body.when_to_prepare - When this recipe is traditionally prepared
- * @param {Array} req.body.ingredients - List of ingredients
- * @param {string} req.body.instructions - Preparation instructions
- * @param {string} req.body.image_url - URL of the recipe image (optional)
- * @returns {Object} Success message with new recipe ID
- * @returns {number} res.status - 201 on success
- * @throws {Error} If validation fails or database operation fails
- */
-router.post('/familyRecipes', async (req, res, next) => {
-  try {
-    const user_id = req.session.user_id;
-    
-    const recipe_id = await user_utils.addFamilyRecipe(user_id, req.body);
-    
-    res.status(201).send({ 
-      message: "Family recipe created successfully", 
-      success: true,
-      recipe_id: recipe_id 
-    });
-  } catch (error) {
-    next(error);
-  }
-});
 
-/**
- * Delete a family recipe
- * 
- * @route DELETE /users/familyRecipes/:recipeId
- * @authentication Required
- * @param {string} req.params.recipeId - ID of the family recipe to delete
- * @returns {Object} Success message
- * @returns {number} res.status - 200 on success
- * @throws {Error} If recipe not found or not owned by user
- */
-router.delete('/familyRecipes/:recipeId', async (req, res, next) => {
-  try {
-    const user_id = req.session.user_id;
-    const recipe_id = req.params.recipeId;
-    
-    await user_utils.deleteFamilyRecipe(user_id, recipe_id);
-    
-    res.status(200).send({ 
-      message: "Family recipe deleted successfully", 
-      success: true 
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+
 
 module.exports = router;

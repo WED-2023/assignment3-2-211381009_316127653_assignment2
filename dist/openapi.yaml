@@ -388,38 +388,7 @@ paths:
           description: Suppose to be at least 3 family recipes, there is less
         "401":
           description: User not logged in
-    post:
-      tags:
-        - Users
-      summary: Add a new family recipe
-      description: Creates a new family recipe for the logged-in user.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/NewFamilyRecipe"
-      responses:
-        "201":
-          description: Family recipe created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Family recipe created successfully"
-                  success:
-                    type: boolean
-                    example: true
-                  recipe_id:
-                    type: integer
-                    example: 123
-        "400":
-          description: Missing required parameters
-        "401":
-          description: User not logged in
+
 
   /users/familyRecipes/{recipeId}:
     get:
@@ -443,36 +412,6 @@ paths:
                 $ref: "#/components/schemas/FullFamilyRecipe"
         "404":
           description: Family recipe not found
-        "401":
-          description: Unauthorized
-    delete:
-      tags:
-        - Users
-      summary: Delete a family recipe
-      description: Deletes a family recipe owned by the logged-in user.
-      parameters:
-        - in: path
-          name: recipeId
-          required: true
-          schema:
-            type: integer
-            description: Family recipe unique ID
-      responses:
-        "200":
-          description: Family recipe deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Family recipe deleted successfully"
-                  success:
-                    type: boolean
-                    example: true
-        "404":
-          description: Family recipe not found or doesn't belong to the user
         "401":
           description: Unauthorized
 
