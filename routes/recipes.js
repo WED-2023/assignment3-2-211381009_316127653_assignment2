@@ -12,6 +12,7 @@ const recipes_utils = require("./utils/recipes_utils");
 const user_utils = require("./utils/user_utils");
 const { validation, auth } = require('../middleware');
 
+router.get("/", (req, res) => res.send("im here"));
 /**
  * Get three random recipes
  * 
@@ -24,45 +25,6 @@ router.get("/random", async (req, res, next) => {
   try {
     const recipes = await recipes_utils.getRandomRecipes(3);
     res.status(200).send(recipes);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * Get all family recipes
- * 
- * @route GET /recipes/family
- * @returns {Array<Object>} Array of family recipe objects
- * @returns {number} res.status - 200 on success, 204 when no recipes found
- * @throws {Error} If database query fails
- */
-router.get("/family", async (req, res, next) => {
-  try {
-    const recipes = await recipes_utils.getAllFamilyRecipes();
-    res.status(200).send(recipes);
-  } catch (error) {
-    if (error.status === 204) {
-      res.status(204).send({ message: error.message, success: false });
-    } else {
-      next(error);
-    }
-  }
-});
-
-/**
- * Get full details of a specific family recipe
- * 
- * @route GET /recipes/family/:recipeId
- * @param {string} req.params.recipeId - ID of the family recipe to retrieve
- * @returns {Object} Family recipe details
- * @returns {number} res.status - 200 on success
- * @throws {Error} If recipe not found
- */
-router.get("/family/:recipeId", async (req, res, next) => {
-  try {
-    const recipe = await recipes_utils.getFamilyRecipeDetails(req.params.recipeId);
-    res.status(200).send(recipe);
   } catch (error) {
     next(error);
   }
@@ -102,7 +64,13 @@ router.get("/search", validation.validateRecipeSearch, async (req, res, next) =>
   }
 });
 
-
+/**
+ */
+  try {
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * Get full details of a recipe by its Spoonacular ID
