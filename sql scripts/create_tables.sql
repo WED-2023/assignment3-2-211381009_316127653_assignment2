@@ -63,25 +63,25 @@ CREATE TABLE IF NOT EXISTS private_recipes  (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- Sample data for quick testing
+
 INSERT INTO users (username, firstname, lastname, country, password, email, profilePic)
 VALUES 
 ('testuser', 'Test', 'User', 'Israel', '$2b$13$IHs1nKpj595BQTtR2Qs6rOi1TCOGvAB6fVrOIt.6tyiz2rbocA9L2', 'test@example.com', NULL); -- Password is "password"
 
--- Sample family recipes
+
 INSERT INTO family_recipes (user_id, recipe_name, owner_name, when_to_prepare, ingredients, instructions, image_url)
 VALUES 
-(1, 'Grandma\'s Apple Pie', 'Grandma Sarah', 'During fall season and family gatherings', 
- '[{"name":"Apples","amount":"6"},{"name":"Sugar","amount":"1 cup"},{"name":"Flour","amount":"2 cups"},{"name":"Butter","amount":"200g"}]', 
- 'Mix flour and butter to create dough. Cut apples and mix with sugar. Place in pie pan and bake for 45 minutes at 180°C.',
- 'https://example.com/apple_pie.jpg'),
+(1, 'Cheesecake', 'Tova Katz', 'When having guests', 
+ '[{"name":"Biscuits","amount":"14"},{"name":"Eggs","amount":"4"},{"name":"Sugar","amount":"1 cup"},{"name":"Cornflour","amount":"3 tablespoons"},{"name":"Instant vanilla pudding","amount":"3 tablespoons"},{"name":"Sweet cream","amount":"half box"},{"name":"White cheese 9%","amount":"half kilo"},{"name":"Sour cream","amount":"1 box"},{"name":"Lemon zest","amount":"1 lemon"}]', 
+ 'Crumble the biscuits and place in the bottom of the greased pan, mix all the other ingredients in the order of the ingredients above, and put in the oven at 170 degrees. Once it gets a little brown on top - take it out, take 2 cups of sour cream and mix with a bag of vanilla sugar, spread over the cake and put in the oven when it is turned off. Leave it in the oven for an hour when it is not working.',
+ NULL),
  
-(1, 'Uncle\'s Famous Hummus', 'Uncle David', 'Any time, especially during summer', 
- '[{"name":"Chickpeas","amount":"2 cups"},{"name":"Tahini","amount":"1/2 cup"},{"name":"Lemon juice","amount":"1/4 cup"},{"name":"Garlic","amount":"3 cloves"}]', 
- 'Blend chickpeas, tahini, lemon juice, and garlic until smooth. Add salt to taste.',
- 'https://example.com/hummus.jpg'),
+(1, 'Cold salad of peppers and tomatoes', 'Tova Katz', 'Daily', 
+ '[{"name":"Light green peppers","amount":"5"},{"name":"Tomatoes","amount":"5"},{"name":"Garlic cloves","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Olive oil","amount":"1 tablespoon"}]', 
+ 'Cut the peppers into coarse pieces and put them on the pan with olive oil on it, wait for it to soften then add the chopped garlic, and add the diced tomatoes, salt, mix everything together and leave for another 20 minutes on low heat with a lid.',
+ NULL),
  
-(1, 'Mom\'s Chicken Soup', 'Mom Rachel', 'During winter and when someone is sick', 
- '[{"name":"Chicken","amount":"1 whole"},{"name":"Carrots","amount":"3"},{"name":"Celery","amount":"2 stalks"},{"name":"Onion","amount":"1"}]', 
- 'Put all ingredients in a large pot, cover with water. Bring to boil, then simmer for 3 hours. Strain and serve hot.',
- 'https://example.com/chicken_soup.jpg');
+(1, 'Cold zucchini salad', 'Tova Katz', 'Daily', 
+ '[{"name":"Large zucchinis","amount":"3"},{"name":"Onions","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Black pepper","amount":"to taste"}]', 
+ 'Scratch the zucchini on a grater, put in a pan with a drop of oil, and wait until it softens, and remove it to a bowl as soon as it softens. Chop the onions, put them in the pan until they are browned. Mix the zucchini with the onion in a bowl together, add salt and pepper. And before serving, you can grate a hard-boiled egg inside.',
+ NULL);

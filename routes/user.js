@@ -1,13 +1,13 @@
 /**
  * User Routes Module
- * 
+ *
  * This module handles all user-specific API endpoints, including:
  * - Favorite recipes management
  * - Watched recipes tracking
  * - Private recipes management
  * - Family recipes management
  * - User preferences and history
- * 
+ *
  * All routes in this module require authentication.
  */
 var express = require("express");
@@ -15,11 +15,11 @@ var router = express.Router();
 const DButils = require("./utils/DButils");
 const user_utils = require("./utils/user_utils");
 const recipe_utils = require("./utils/recipes_utils");
-const { auth, validation } = require('../middleware');
+const { auth, validation } = require("../middleware");
 
 /**
  * Apply authentication middleware to all routes in this router
- * 
+ *
  * This ensures all user-related endpoints are protected and can only
  * be accessed by authenticated users with valid sessions.
  */
@@ -27,7 +27,7 @@ router.use(auth.authenticate);
 
 /**
  * Add a recipe to user's favorites list
- * 
+ *
  * @route POST /users/favorites
  * @authentication Required
  * @param {number} req.body.recipeId - ID of the recipe to add to favorites
@@ -35,21 +35,28 @@ router.use(auth.authenticate);
  * @returns {number} res.status - 200 on success, 400 if recipe doesn't exist
  * @throws {Error} If database operation fails
  */
-router.post('/favorites', async (req,res,next) => {
-  try{
+router.post("/favorites", async (req, res, next) => {
+  try {
     const user_id = req.session.user_id;
     const recipe_id = req.body.recipeId;
-    
+
     // Check if recipe exists in Spoonacular
     try {
       await recipe_utils.getRecipeDetails(recipe_id);
     } catch (err) {
-      res.status(400).send({ message: "Recipe does not exist", success: false });
+      res
+        .status(400)
+        .send({ message: "Recipe does not exist", success: false });
       return;
     }
-    
+
     await user_utils.markAsFavorite(user_id, recipe_id);
-    res.status(200).send({ message: "Recipe successfully saved as favorite", success: true });
+    res
+      .status(200)
+      .send({
+        message: "Recipe successfully saved as favorite",
+        success: true,
+      });
   } catch (error) {
     next(error);
   }
@@ -57,29 +64,56 @@ router.post('/favorites', async (req,res,next) => {
 
 /**
  * Get all favorite recipes for the logged-in user
- * 
+ *
  * @route GET /users/favorites
  * @authentication Required
  * @returns {Array<Object>} Array of recipe preview objects
  * @returns {number} res.status - 200 on success
  * @throws {Error} If database query fails
  */
-router.get('/favorites', async (req,res,next) => {
-  try{
+router.get("/favorites", async (req, res, next) => {
+  try {
     const user_id = req.session.user_id;
     const recipes_id = await user_utils.getFavoriteRecipes(user_id);
     let recipes_id_array = [];
     recipes_id.map((element) => recipes_id_array.push(element.recipe_id)); //extracting the recipe ids into array
-    const results = await recipe_utils.getRecipesPreview(recipes_id_array);
-    res.status(200).send(results);
-  } catch(error){
-    next(error); 
+    // If no favorite recipes found, return empty array
+    if (recipes_id_array.length === 0) {
+      res.status(200).send([]);
+      return;
+    }
+    const results = await Promise.all(
+      recipes_id_array.map(async (id) => {
+        try {
+          const preview = await recipe_utils.getRecipeDetails(id);
+          return {
+            id: preview.id,
+            title: preview.title,
+            readyInMinutes: preview.readyInMinutes,
+            image: preview.image,
+            popularity: preview.popularity,
+            vegan: preview.vegan,
+            vegetarian: preview.vegetarian,
+            glutenFree: preview.glutenFree,
+          };
+        } catch (error) {
+          console.log(`Failed to fetch recipe ${id}: ${error.message}`);
+          // Skip recipes that fail to load
+          return null;
+        }
+      })
+    );
+    // Filter out any null results from failed fetches
+    const validResults = results.filter((recipe) => recipe !== null);
+    res.status(200).send(validResults);
+  } catch (error) {
+    next(error);
   }
 });
 
 /**
  * Remove a recipe from user's favorites list
- * 
+ *
  * @route DELETE /users/favorites
  * @authentication Required
  * @param {number} req.query.recipeId - ID of the recipe to remove from favorites
@@ -87,17 +121,24 @@ router.get('/favorites', async (req,res,next) => {
  * @returns {number} res.status - 200 on success, 404 if recipe was not in favorites
  * @throws {Error} If database operation fails
  */
-router.delete('/favorites', async (req, res, next) => {
+router.delete("/favorites", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
     const recipe_id = req.query.recipeId;
-    
+
     const removed = await user_utils.removeFavorite(user_id, recipe_id);
-    
+
     if (removed) {
-      res.status(200).send({ message: "Recipe successfully removed from favorites", success: true });
+      res
+        .status(200)
+        .send({
+          message: "Recipe successfully removed from favorites",
+          success: true,
+        });
     } else {
-      res.status(404).send({ message: "Recipe was not in favorites", success: false });
+      res
+        .status(404)
+        .send({ message: "Recipe was not in favorites", success: false });
     }
   } catch (error) {
     next(error);
@@ -106,9 +147,9 @@ router.delete('/favorites', async (req, res, next) => {
 
 /**
  * Mark a recipe as watched by the user
- * 
+ *
  * If recipe was previously watched, this updates the timestamp.
- * 
+ *
  * @route POST /users/markwatched/:recipeId
  * @authentication Required
  * @param {string} req.params.recipeId - ID of the recipe to mark as watched
@@ -116,13 +157,15 @@ router.delete('/favorites', async (req, res, next) => {
  * @returns {number} res.status - 200 on success
  * @throws {Error} If database operation fails
  */
-router.post('/markwatched/:recipeId', async (req, res, next) => {
+router.post("/markwatched/:recipeId", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
     const recipe_id = req.params.recipeId;
-    
+
     await user_utils.markAsWatched(user_id, recipe_id);
-    res.status(200).send({ message: "Recipe marked as watched", success: true });
+    res
+      .status(200)
+      .send({ message: "Recipe marked as watched", success: true });
   } catch (error) {
     next(error);
   }
@@ -130,22 +173,22 @@ router.post('/markwatched/:recipeId', async (req, res, next) => {
 
 /**
  * Delete all watched recipes history for the user
- * 
+ *
  * @route DELETE /users/deleteWatchedRecipes
  * @authentication Required
  * @returns {Object} Success message with count of deleted records
  * @returns {number} res.status - 200 on success
  * @throws {Error} If database operation fails
  */
-router.delete('/deleteWatchedRecipes', async (req, res, next) => {
+router.delete("/deleteWatchedRecipes", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
-    
+
     const deletedCount = await user_utils.deleteAllWatchedRecipes(user_id);
-    res.status(200).send({ 
-      message: "Watched recipes history cleared", 
+    res.status(200).send({
+      message: "Watched recipes history cleared",
       success: true,
-      deletedCount: deletedCount
+      deletedCount: deletedCount,
     });
   } catch (error) {
     next(error);
@@ -154,16 +197,16 @@ router.delete('/deleteWatchedRecipes', async (req, res, next) => {
 
 /**
  * Get the last 3 recipes watched by the user
- * 
+ *
  * Returns recipes ordered by most recently watched first.
- * 
+ *
  * @route GET /users/lastWatchedRecipes
  * @authentication Required
  * @returns {Array<Object>} Array of recipe preview objects
  * @returns {number} res.status - 200 on success
  * @throws {Error} If database query fails
  */
-router.get('/lastWatchedRecipes', async (req, res, next) => {
+router.get("/lastWatchedRecipes", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
     const recipes_id = await user_utils.getLastWatchedRecipes(user_id, 3);
@@ -178,16 +221,16 @@ router.get('/lastWatchedRecipes', async (req, res, next) => {
 
 /**
  * Get all recipes watched by the user
- * 
+ *
  * Returns recipes ordered by most recently watched first.
- * 
+ *
  * @route GET /users/allWatchedRecipes
  * @authentication Required
  * @returns {Array<Object>} Array of recipe preview objects
  * @returns {number} res.status - 200 on success
  * @throws {Error} If database query fails
  */
-router.get('/allWatchedRecipes', async (req, res, next) => {
+router.get("/allWatchedRecipes", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
     const recipes_id = await user_utils.getWatchedRecipes(user_id);
@@ -202,16 +245,16 @@ router.get('/allWatchedRecipes', async (req, res, next) => {
 
 /**
  * Get the last search results from session
- * 
+ *
  * Returns the recipes from the most recent search operation
  * saved in the user's session.
- * 
+ *
  * @route GET /users/lastSearch
  * @authentication Required
  * @returns {Array<Object>} Array of recipe preview objects or empty array
  * @returns {number} res.status - 200 on success
  */
-router.get('/lastSearch', async (req, res, next) => {
+router.get("/lastSearch", async (req, res, next) => {
   try {
     const results = req.session.lastSearch || [];
     res.status(200).send(results);
@@ -222,14 +265,14 @@ router.get('/lastSearch', async (req, res, next) => {
 
 /**
  * Get all private recipes created by the user
- * 
+ *
  * @route GET /users/myRecipes
  * @authentication Required
  * @returns {Array<Object>} Array of private recipe preview objects
  * @returns {number} res.status - 200 on success
  * @throws {Error} If database query fails
  */
-router.get('/myRecipes', async (req, res, next) => {
+router.get("/myRecipes", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
     const recipes = await user_utils.getPrivateRecipes(user_id);
@@ -241,7 +284,7 @@ router.get('/myRecipes', async (req, res, next) => {
 
 /**
  * Add a new private recipe for the user
- * 
+ *
  * @route POST /users/myRecipes
  * @authentication Required
  * @validation validatePrivateRecipe
@@ -260,25 +303,32 @@ router.get('/myRecipes', async (req, res, next) => {
  * @returns {number} res.status - 201 on success
  * @throws {Error} If validation fails or database operation fails
  */
-router.post('/myRecipes', validation.validatePrivateRecipe, async (req, res, next) => {
-  try {
-    const user_id = req.session.user_id;
-    const recipe_details = req.body;
-    
-    const recipe_id = await user_utils.addPrivateRecipe(user_id, recipe_details);
-    res.status(201).send({ 
-      message: "Recipe created successfully", 
-      success: true, 
-      recipe_id: recipe_id 
-    });
-  } catch (error) {
-    next(error);
+router.post(
+  "/myRecipes",
+  validation.validatePrivateRecipe,
+  async (req, res, next) => {
+    try {
+      const user_id = req.session.user_id;
+      const recipe_details = req.body;
+
+      const recipe_id = await user_utils.addPrivateRecipe(
+        user_id,
+        recipe_details
+      );
+      res.status(201).send({
+        message: "Recipe created successfully",
+        success: true,
+        recipe_id: recipe_id,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * Get full details of a specific private recipe
- * 
+ *
  * @route GET /users/myRecipes/:recipeId
  * @authentication Required
  * @param {string} req.params.recipeId - ID of the private recipe to retrieve
@@ -286,11 +336,11 @@ router.post('/myRecipes', validation.validatePrivateRecipe, async (req, res, nex
  * @returns {number} res.status - 200 on success
  * @throws {Error} If recipe not found or not owned by user
  */
-router.get('/myRecipes/:recipeId', async (req, res, next) => {
+router.get("/myRecipes/:recipeId", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
     const recipe_id = req.params.recipeId;
-    
+
     const recipe = await user_utils.getPrivateRecipeDetails(recipe_id, user_id);
     res.status(200).send(recipe);
   } catch (error) {
@@ -300,14 +350,14 @@ router.get('/myRecipes/:recipeId', async (req, res, next) => {
 
 /**
  * Get all family recipes for the logged-in user
- * 
+ *
  * @route GET /users/familyRecipes
  * @authentication Required
  * @returns {Array<Object>} Array of family recipe objects
  * @returns {number} res.status - 200 on success, 204 when fewer than 3 recipes
  * @throws {Error} If database query fails
  */
-router.get('/familyRecipes', async (req, res, next) => {
+router.get("/familyRecipes", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
     const recipes = await user_utils.getAllFamilyRecipes(user_id);
@@ -323,7 +373,7 @@ router.get('/familyRecipes', async (req, res, next) => {
 
 /**
  * Get full details of a specific family recipe
- * 
+ *
  * @route GET /users/familyRecipes/:recipeId
  * @authentication Required
  * @param {string} req.params.recipeId - ID of the family recipe to retrieve
@@ -331,17 +381,17 @@ router.get('/familyRecipes', async (req, res, next) => {
  * @returns {number} res.status - 200 on success
  * @throws {Error} If recipe not found or not owned by user
  */
-router.get('/familyRecipes/:recipeId', async (req, res, next) => {
+router.get("/familyRecipes/:recipeId", async (req, res, next) => {
   try {
     const user_id = req.session.user_id;
-    const recipe = await user_utils.getFamilyRecipeDetails(req.params.recipeId, user_id);
+    const recipe = await user_utils.getFamilyRecipeDetails(
+      req.params.recipeId,
+      user_id
+    );
     res.status(200).send(recipe);
   } catch (error) {
     next(error);
   }
 });
-
-
-
 
 module.exports = router;
