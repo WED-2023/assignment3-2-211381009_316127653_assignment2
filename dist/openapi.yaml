@@ -4,8 +4,10 @@ info:
   description: API for recipes project.
   version: 1.0.0
 servers:
-  - description: SwaggerHub API Auto Mocking
-    url: https://virtserver.swaggerhub.com/AmitDvash/WebDevelopmentCourse/1.0.0
+  - description: Localhost API
+    url: http://localhost
+  # - description: Partner's mock server
+  #   url: https://virtserver.swaggerhub.com/AmitDvash/WebDevelopmentCourse/1.0.0
 tags:
   - name: Auth
     description: Authentication
@@ -104,7 +106,6 @@ paths:
           description: Recipes not found
         "500":
           description: Internal server error
-
 
   /users/markwatched/{recipeId}:
     post:
@@ -388,7 +389,6 @@ paths:
           description: Suppose to be at least 3 family recipes, there is less
         "401":
           description: User not logged in
-
 
   /users/familyRecipes/{recipeId}:
     get:
