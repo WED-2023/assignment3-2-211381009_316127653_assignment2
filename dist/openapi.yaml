@@ -191,6 +191,82 @@ paths:
         "400":
           description: Query parameter is missing
 
+  /recipes/{recipeId}/like:
+    post:
+      tags:
+        - Recipes
+      summary: Like or unlike a recipe
+      description: Allows a logged-in user to like or unlike a Spoonacular recipe.
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Spoonacular recipe unique ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                like:
+                  type: boolean
+                  description: True to like, false to unlike
+                  example: true
+              required:
+                - like
+      responses:
+        "200":
+          description: Like status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  totalLikes:
+                    type: integer
+                    description: Combined likes from Spoonacular and users
+                  userHasLiked:
+                    type: boolean
+                    description: Current user's like status
+        "400":
+          description: Invalid request body
+        "401":
+          description: User not authenticated
+
+  /recipes/{recipeId}/likes:
+    get:
+      tags:
+        - Recipes
+      summary: Get like count and user's like status for a recipe
+      description: Returns the total like count (Spoonacular + user likes) and whether the current user has liked the recipe.
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Spoonacular recipe unique ID
+      responses:
+        "200":
+          description: Like information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalLikes:
+                    type: integer
+                    description: Combined likes from Spoonacular and users
+                  userHasLiked:
+                    type: boolean
+                    description: Whether the current user has liked this recipe
   /users/favorites:
     get:
       tags:
@@ -366,53 +442,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/previewRecipe"
-        "401":
-          description: Unauthorized
-
-  /users/familyRecipes:
-    get:
-      tags:
-        - Users
-      summary: Get all family recipes
-      description: Fetches all the family recipes for the logged-in user (suppose to be at least 3).
-      responses:
-        "200":
-          description: List of all family recipes
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/previewFamilyRecipe"
-        "204":
-          description: Suppose to be at least 3 family recipes, there is less
-        "401":
-          description: User not logged in
-
-  /users/familyRecipes/{recipeId}:
-    get:
-      tags:
-        - Users
-      summary: Get full details of a family recipe
-      description: Returns full details of a family recipe identified by the recipeId.
-      parameters:
-        - in: path
-          name: recipeId
-          required: true
-          schema:
-            type: string
-            description: Family recipe unique ID
-      responses:
-        "200":
-          description: Family recipe full details
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FullFamilyRecipe"
-        "404":
-          description: Family recipe not found
-        "401":
+                  $ref: "#/components/schemas/previewRecipe"        "401":
           description: Unauthorized
 
 components:
@@ -490,9 +520,7 @@ components:
           type: string
           format: email
           description: User's email.
-          example: amitdva@post.bgu.ac.il
-
-    previewRecipe:
+          example: amitdva@post.bgu.ac.il    previewRecipe:
       type: object
       description: Model containing recipe preview details
       properties:
@@ -515,7 +543,7 @@ components:
           example: 45
         popularity:
           type: integer
-          description: Number of likes.
+          description: Combined number of likes from Spoonacular and users.
           example: 1
         vegan:
           type: boolean
@@ -532,13 +560,14 @@ components:
         isWatched:
           type: boolean
           description: True if the logged-in user has already watched this recipe.
-          example: false
-        isFavorite:
+          example: false        isFavorite:
           type: boolean
           description: True if the logged-in user has added this recipe to their favorites.
           example: false
-
-    FullRecipe:
+        userHasLiked:
+          type: boolean
+          description: True if the logged-in user has liked this recipe.
+          example: false    FullRecipe:
       type: object
       description: Model containing full recipe details
       properties:
@@ -561,7 +590,7 @@ components:
           example: 45
         popularity:
           type: integer
-          description: Number of likes.
+          description: Combined number of likes from Spoonacular and users.
           example: 1
         vegan:
           type: boolean
@@ -600,11 +629,14 @@ components:
         instructions:
           type: string
           description: Step-by-step instructions on how to prepare the recipe.
-          example: Preheat oven to 375 F. Combine all ingredients for the oatmeal and mix together very well. Set aside...
-        servings:
+          example: Preheat oven to 375 F. Combine all ingredients for the oatmeal and mix together very well. Set aside...        servings:
           type: integer
           description: Number of servings.
           example: 1
+        userHasLiked:
+          type: boolean
+          description: True if the logged-in user has liked this recipe.
+          example: false
 
     previewFamilyRecipe:
       type: object

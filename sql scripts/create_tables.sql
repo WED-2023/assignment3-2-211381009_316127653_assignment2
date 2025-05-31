@@ -63,6 +63,15 @@ CREATE TABLE IF NOT EXISTS private_recipes  (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
+-- Create recipe_likes table to track user likes on Spoonacular recipes
+CREATE TABLE IF NOT EXISTS recipe_likes (
+    recipe_id INT NOT NULL COMMENT 'Spoonacular Recipe ID',
+    user_id INT NOT NULL COMMENT 'User ID who liked the recipe',
+    liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'When the like was added',
+    PRIMARY KEY (recipe_id, user_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 
 INSERT INTO users (username, firstname, lastname, country, password, email, profilePic)
 VALUES 

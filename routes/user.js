@@ -82,30 +82,9 @@ router.get("/favorites", async (req, res, next) => {
       res.status(200).send([]);
       return;
     }
-    const results = await Promise.all(
-      recipes_id_array.map(async (id) => {
-        try {
-          const preview = await recipe_utils.getRecipeDetails(id);
-          return {
-            id: preview.id,
-            title: preview.title,
-            readyInMinutes: preview.readyInMinutes,
-            image: preview.image,
-            popularity: preview.popularity,
-            vegan: preview.vegan,
-            vegetarian: preview.vegetarian,
-            glutenFree: preview.glutenFree,
-          };
-        } catch (error) {
-          console.log(`Failed to fetch recipe ${id}: ${error.message}`);
-          // Skip recipes that fail to load
-          return null;
-        }
-      })
-    );
-    // Filter out any null results from failed fetches
-    const validResults = results.filter((recipe) => recipe !== null);
-    res.status(200).send(validResults);
+      // Use enhanced preview function to include like information
+    const results = await recipe_utils.getRecipesPreviewWithLikes(recipes_id_array, user_id);
+    res.status(200).send(results.filter(recipe => recipe !== null));
   } catch (error) {
     next(error);
   }
@@ -212,7 +191,7 @@ router.get("/lastWatchedRecipes", async (req, res, next) => {
     const recipes_id = await user_utils.getLastWatchedRecipes(user_id, 3);
     let recipes_id_array = [];
     recipes_id.map((element) => recipes_id_array.push(element.recipe_id));
-    const results = await recipe_utils.getRecipesPreview(recipes_id_array);
+    const results = await recipe_utils.getRecipesPreviewWithLikes(recipes_id_array, user_id);
     res.status(200).send(results);
   } catch (error) {
     next(error);
@@ -236,7 +215,7 @@ router.get("/allWatchedRecipes", async (req, res, next) => {
     const recipes_id = await user_utils.getWatchedRecipes(user_id);
     let recipes_id_array = [];
     recipes_id.map((element) => recipes_id_array.push(element.recipe_id));
-    const results = await recipe_utils.getRecipesPreview(recipes_id_array);
+    const results = await recipe_utils.getRecipesPreviewWithLikes(recipes_id_array, user_id);
     res.status(200).send(results);
   } catch (error) {
     next(error);
