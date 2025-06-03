@@ -442,7 +442,8 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/previewRecipe"        "401":
+                  $ref: "#/components/schemas/previewRecipe"
+        "401":
           description: Unauthorized
 
 components:
@@ -520,7 +521,9 @@ components:
           type: string
           format: email
           description: User's email.
-          example: amitdva@post.bgu.ac.il    previewRecipe:
+          example: amitdva@post.bgu.ac.il
+
+    previewRecipe:
       type: object
       description: Model containing recipe preview details
       properties:
@@ -560,362 +563,365 @@ components:
         isWatched:
           type: boolean
           description: True if the logged-in user has already watched this recipe.
-          example: false        isFavorite:
+          example: false
+        isFavorite:
           type: boolean
           description: True if the logged-in user has added this recipe to their favorites.
           example: false
         userHasLiked:
           type: boolean
           description: True if the logged-in user has liked this recipe.
-          example: false    FullRecipe:
-      type: object
-      description: Model containing full recipe details
-      properties:
-        id:
-          type: integer
-          description: Recipe ID in Spoonacular.
-          example: 639477
-        image:
-          type: string
-          format: uri
-          description: URL of the recipe's image.
-          example: https://spoonacular.com/recipeImages/639477-312x231.jpg
-        title:
-          type: string
-          description: Name of the recipe.
-          example: Cinnamon Roll Oatmeal
-        readyInMinutes:
-          type: integer
-          description: Time it takes to make the recipe.
-          example: 45
-        popularity:
-          type: integer
-          description: Combined number of likes from Spoonacular and users.
-          example: 1
-        vegan:
-          type: boolean
-          description: Indicates if the recipe is vegan.
           example: false
-        vegetarian:
-          type: boolean
-          description: Indicates if the recipe is vegetarian.
-          example: true
-        glutenFree:
-          type: boolean
-          description: Indicates if the recipe is gluten-free.
-          example: true
-        isWatched:
-          type: boolean
-          description: True if the logged-in user has already watched this recipe.
-          example: false
-        isFavorite:
-          type: boolean
-          description: True if the logged-in user has added this recipe to their favorites.
-          example: false
-        ingredients:
-          type: array
-          items:
-            type: object
-            properties:
-              amount:
-                type: number
-                description: Quantity of the ingredient.
-                example: 5
-              name:
-                type: string
-                description: Name of the ingredient.
-                example: cinnamon
-          description: List of ingredients and their quantities.
-        instructions:
-          type: string
-          description: Step-by-step instructions on how to prepare the recipe.
-          example: Preheat oven to 375 F. Combine all ingredients for the oatmeal and mix together very well. Set aside...        servings:
-          type: integer
-          description: Number of servings.
-          example: 1
-        userHasLiked:
-          type: boolean
-          description: True if the logged-in user has liked this recipe.
-          example: false
+        FullRecipe:
+          type: object
+          description: Model containing full recipe details
+          properties:
+          id:
+            type: integer
+            description: Recipe ID in Spoonacular.
+            example: 639477
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's image.
+            example: https://spoonacular.com/recipeImages/639477-312x231.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Cinnamon Roll Oatmeal
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          popularity:
+            type: integer
+            description: Combined number of likes from Spoonacular and users.
+            example: 1
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: false
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          isWatched:
+            type: boolean
+            description: True if the logged-in user has already watched this recipe.
+            example: false
+          isFavorite:
+            type: boolean
+            description: True if the logged-in user has added this recipe to their favorites.
+            example: false
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  description: Quantity of the ingredient.
+                  example: 5
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: cinnamon
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: Preheat oven to 375 F. Combine all ingredients for the oatmeal and mix together very well. Set aside...
+          servings:
+            type: integer
+            description: Number of servings.
+            example: 1
+          userHasLiked:
+            type: boolean
+            description: True if the logged-in user has liked this recipe.
+            example: false
 
-    previewFamilyRecipe:
-      type: object
-      description: Model containing recipe preview details
-      properties:
-        id:
-          type: integer
-          description: Recipe ID in Spoonacular.
-          example: 639477
-        image:
-          type: string
-          format: uri
-          description: URL of the recipe's/family member with the food - image.
-          example: https://spoonacular.com/recipeImages/639477-312x231.jpg
-        title:
-          type: string
-          description: Name of the recipe.
-          example: Cinnamon Roll Oatmeal
-        readyInMinutes:
-          type: integer
-          description: Time it takes to make the recipe.
-          example: 45
-        popularity:
-          type: integer
-          description: Number of likes.
-          example: 1
-        vegan:
-          type: boolean
-          description: Indicates if the recipe is vegan.
-          example: false
-        vegetarian:
-          type: boolean
-          description: Indicates if the recipe is vegetarian.
-          example: true
-        glutenFree:
-          type: boolean
-          description: Indicates if the recipe is gluten-free.
-          example: true
-        isWatched:
-          type: boolean
-          description: True if the logged-in user has already watched this recipe.
-          example: false
-        isFavorite:
-          type: boolean
-          description: True if the logged-in user has added this recipe to their favorites.
-          example: false
-        recipeOwner:
-          type: string
-          description: who owns the recipe
-          example: Amit's grandmother
-        whenWeMake:
-          type: string
-          description: when the family\owner usually make it
-          example: Passover
+      previewFamilyRecipe:
+        type: object
+        description: Model containing recipe preview details
+        properties:
+          id:
+            type: integer
+            description: Recipe ID in Spoonacular.
+            example: 639477
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's/family member with the food - image.
+            example: https://spoonacular.com/recipeImages/639477-312x231.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Cinnamon Roll Oatmeal
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          popularity:
+            type: integer
+            description: Number of likes.
+            example: 1
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: false
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          isWatched:
+            type: boolean
+            description: True if the logged-in user has already watched this recipe.
+            example: false
+          isFavorite:
+            type: boolean
+            description: True if the logged-in user has added this recipe to their favorites.
+            example: false
+          recipeOwner:
+            type: string
+            description: who owns the recipe
+            example: Amit's grandmother
+          whenWeMake:
+            type: string
+            description: when the family\owner usually make it
+            example: Passover
 
-    FullFamilyRecipe:
-      type: object
-      description: Model containing full recipe details
-      properties:
-        id:
-          type: integer
-          description: Recipe ID in Spoonacular.
-          example: 639477
-        image:
-          type: string
-          format: uri
-          description: URL of the recipe's/family member with the food - image.
-          example: https://spoonacular.com/recipeImages/639477-312x231.jpg
-        title:
-          type: string
-          description: Name of the recipe.
-          example: Cinnamon Roll Oatmeal
-        readyInMinutes:
-          type: integer
-          description: Time it takes to make the recipe.
-          example: 45
-        popularity:
-          type: integer
-          description: Number of likes.
-          example: 1
-        vegan:
-          type: boolean
-          description: Indicates if the recipe is vegan.
-          example: false
-        vegetarian:
-          type: boolean
-          description: Indicates if the recipe is vegetarian.
-          example: true
-        glutenFree:
-          type: boolean
-          description: Indicates if the recipe is gluten-free.
-          example: true
-        isWatched:
-          type: boolean
-          description: True if the logged-in user has already watched this recipe.
-          example: false
-        isFavorite:
-          type: boolean
-          description: True if the logged-in user has added this recipe to their favorites.
-          example: false
-        ingredients:
-          type: array
-          items:
-            type: object
-            properties:
-              amount:
-                type: number
-                description: Quantity of the ingredient.
-                example: 5
-              name:
-                type: string
-                description: Name of the ingredient.
-                example: cinnamon
-          description: List of ingredients and their quantities.
-        instructions:
-          type: string
-          description: Step-by-step instructions on how to prepare the recipe.
-          example: Preheat oven to 375 F. Combine all ingredients for the oatmeal and mix together very well. Set aside...
-        servings:
-          type: integer
-          description: Number of servings.
-          example: 1
-        recipeOwner:
-          type: string
-          description: who owns the recipe
-          example: Amit's grandmother
-        whenWeMake:
-          type: string
-          description: when the family\owner usually make it
-          example: Passover
+      FullFamilyRecipe:
+        type: object
+        description: Model containing full recipe details
+        properties:
+          id:
+            type: integer
+            description: Recipe ID in Spoonacular.
+            example: 639477
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's/family member with the food - image.
+            example: https://spoonacular.com/recipeImages/639477-312x231.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Cinnamon Roll Oatmeal
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          popularity:
+            type: integer
+            description: Number of likes.
+            example: 1
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: false
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          isWatched:
+            type: boolean
+            description: True if the logged-in user has already watched this recipe.
+            example: false
+          isFavorite:
+            type: boolean
+            description: True if the logged-in user has added this recipe to their favorites.
+            example: false
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  description: Quantity of the ingredient.
+                  example: 5
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: cinnamon
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: Preheat oven to 375 F. Combine all ingredients for the oatmeal and mix together very well. Set aside...
+          servings:
+            type: integer
+            description: Number of servings.
+            example: 1
+          recipeOwner:
+            type: string
+            description: who owns the recipe
+            example: Amit's grandmother
+          whenWeMake:
+            type: string
+            description: when the family\owner usually make it
+            example: Passover
 
-    PrivateRecipe:
-      type: object
-      description: Model containing private recipe preview details
-      properties:
-        id:
-          type: integer
-          description: Recipe ID in the private recipes table.
-          example: 1
-        image:
-          type: string
-          format: uri
-          description: URL of the recipe's image.
-          example: roasted_potatoes.jpg
-        title:
-          type: string
-          description: Name of the recipe.
-          example: Roasted Potatoes
-        readyInMinutes:
-          type: integer
-          description: Time it takes to make the recipe.
-          example: 45
-        vegan:
-          type: boolean
-          description: Indicates if the recipe is vegan.
-          example: true
-        vegetarian:
-          type: boolean
-          description: Indicates if the recipe is vegetarian.
-          example: true
-        glutenFree:
-          type: boolean
-          description: Indicates if the recipe is gluten-free.
-          example: true
+      PrivateRecipe:
+        type: object
+        description: Model containing private recipe preview details
+        properties:
+          id:
+            type: integer
+            description: Recipe ID in the private recipes table.
+            example: 1
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's image.
+            example: roasted_potatoes.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Roasted Potatoes
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: true
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
 
-    FullPrivateRecipe:
-      type: object
-      description: Model containing full private recipe details
-      properties:
-        id:
-          type: integer
-          description: Recipe ID in the private recipes table.
-          example: 1
-        image:
-          type: string
-          format: uri
-          description: URL of the recipe's image.
-          example: roasted_potatoes.jpg
-        title:
-          type: string
-          description: Name of the recipe.
-          example: Roasted Potatoes
-        readyInMinutes:
-          type: integer
-          description: Time it takes to make the recipe.
-          example: 45
-        vegan:
-          type: boolean
-          description: Indicates if the recipe is vegan.
-          example: true
-        vegetarian:
-          type: boolean
-          description: Indicates if the recipe is vegetarian.
-          example: true
-        glutenFree:
-          type: boolean
-          description: Indicates if the recipe is gluten-free.
-          example: true
-        ingredients:
-          type: array
-          items:
-            type: object
-            properties:
-              amount:
-                type: string
-                description: Quantity of the ingredient.
-                example: 4 large
-              name:
-                type: string
-                description: Name of the ingredient.
-                example: potatoes
-          description: List of ingredients and their quantities.
-        instructions:
-          type: string
-          description: Step-by-step instructions on how to prepare the recipe.
-          example: 1. Preheat the oven to 425°F (220°C). 2. Wash and cut the potatoes into small cubes...
-        servings:
-          type: integer
-          description: Number of servings.
-          example: 4
+      FullPrivateRecipe:
+        type: object
+        description: Model containing full private recipe details
+        properties:
+          id:
+            type: integer
+            description: Recipe ID in the private recipes table.
+            example: 1
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's image.
+            example: roasted_potatoes.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Roasted Potatoes
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: true
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  description: Quantity of the ingredient.
+                  example: 4 large
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: potatoes
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: 1. Preheat the oven to 425°F (220°C). 2. Wash and cut the potatoes into small cubes...
+          servings:
+            type: integer
+            description: Number of servings.
+            example: 4
 
-    AddFullPrivateRecipe:
-      required:
-        - title
-        - readyInMinutes
-        - image
-        - vegan
-        - vegetarian
-        - glutenFree
-        - ingredients
-        - instructions
-        - servings
-      type: object
-      description: Model containing full private recipe details for adding a new recipe
-      properties:
-        image:
-          type: string
-          format: uri
-          description: URL of the recipe's image.
-          example: roasted_potatoes.jpg
-        title:
-          type: string
-          description: Name of the recipe.
-          example: Roasted Potatoes
-        readyInMinutes:
-          type: integer
-          description: Time it takes to make the recipe.
-          example: 45
-        vegan:
-          type: boolean
-          description: Indicates if the recipe is vegan.
-          example: true
-        vegetarian:
-          type: boolean
-          description: Indicates if the recipe is vegetarian.
-          example: true
-        glutenFree:
-          type: boolean
-          description: Indicates if the recipe is gluten-free.
-          example: true
-        ingredients:
-          type: array
-          items:
-            type: object
-            properties:
-              amount:
-                type: string
-                description: Quantity of the ingredient.
-                example: 4 large
-              name:
-                type: string
-                description: Name of the ingredient.
-                example: potatoes
-          description: List of ingredients and their quantities.
-        instructions:
-          type: string
-          description: Step-by-step instructions on how to prepare the recipe.
-          example: 1. Preheat the oven to 425°F (220°C). 2. Wash and cut the potatoes into small cubes...
-        servings:
-          type: integer
-          description: Number of servings.
-          example: 4
+      AddFullPrivateRecipe:
+        required:
+          - title
+          - readyInMinutes
+          - image
+          - vegan
+          - vegetarian
+          - glutenFree
+          - ingredients
+          - instructions
+          - servings
+        type: object
+        description: Model containing full private recipe details for adding a new recipe
+        properties:
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's image.
+            example: roasted_potatoes.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Roasted Potatoes
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: true
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  description: Quantity of the ingredient.
+                  example: 4 large
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: potatoes
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: 1. Preheat the oven to 425°F (220°C). 2. Wash and cut the potatoes into small cubes...
+          servings:
+            type: integer
+            description: Number of servings.
+            example: 4
