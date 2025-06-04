@@ -240,33 +240,6 @@ paths:
         "401":
           description: User not authenticated
 
-  /recipes/{recipeId}/likes:
-    get:
-      tags:
-        - Recipes
-      summary: Get like count and user's like status for a recipe
-      description: Returns the total like count (Spoonacular + user likes) and whether the current user has liked the recipe.
-      parameters:
-        - name: recipeId
-          in: path
-          required: true
-          schema:
-            type: string
-            description: Spoonacular recipe unique ID
-      responses:
-        "200":
-          description: Like information
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  totalLikes:
-                    type: integer
-                    description: Combined likes from Spoonacular and users
-                  userHasLiked:
-                    type: boolean
-                    description: Whether the current user has liked this recipe
   /users/favorites:
     get:
       tags:

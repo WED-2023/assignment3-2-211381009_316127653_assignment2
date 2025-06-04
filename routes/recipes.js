@@ -54,36 +54,49 @@ router.get("/random", async (req, res, next) => {
  * @returns {number} res.status - 200 on success, 204 when no results found
  * @throws {Error} If validation fails or API request fails
  */
-router.get("/search", validation.validateRecipeSearch, async (req, res, next) => {
-  try {
-    const { query, number, cuisine, diet, intolerance } = req.query;
-    const userId = req.session?.user_id;
-    
-    const results = await recipes_utils.searchRecipes(query, number, cuisine, diet, intolerance);
-    
-    // Enhance with like information if user is logged in
-    let enhancedResults = results;
-    if (userId && results.length > 0) {
-      const recipeIds = results.map(recipe => recipe.id);
-      enhancedResults = await recipes_utils.getRecipesPreviewWithLikes(recipeIds, userId);
+router.get(
+  "/search",
+  validation.validateRecipeSearch,
+  async (req, res, next) => {
+    try {
+      const { query, number, cuisine, diet, intolerance } = req.query;
+      const userId = req.session?.user_id;
+
+      const results = await recipes_utils.searchRecipes(
+        query,
+        number,
+        cuisine,
+        diet,
+        intolerance
+      );
+
+      // Enhance with like information if user is logged in
+      let enhancedResults = results;
+      if (userId && results.length > 0) {
+        const recipeIds = results.map((recipe) => recipe.id);
+        enhancedResults = await recipes_utils.getRecipesPreviewWithLikes(
+          recipeIds,
+          userId
+        );
+      }
+
+      // Save search results in session for lastSearch
+      if (req.session && req.session.user_id) {
+        req.session.lastSearch = enhancedResults;
+      }
+
+      if (enhancedResults.length === 0) {
+        res
+          .status(204)
+          .send({ message: "No matching recipes found", success: true });
+      } else {
+        res.status(200).send(enhancedResults);
+      }
+    } catch (error) {
+      next(error);
     }
-    
-    // Save search results in session for lastSearch
-    if (req.session && req.session.user_id) {
-      req.session.lastSearch = enhancedResults;
-    }
-    
-    if (enhancedResults.length === 0) {
-      res.status(204).send({ message: "No matching recipes found", success: true });
-    } else {
-      res.status(200).send(enhancedResults);
-    }
-  } catch (error) {
-    next(error);
   }
-});
-
-
+);
 
 /**
  * Get full details of a recipe by its Spoonacular ID
@@ -140,37 +153,11 @@ router.post("/:recipeId/like", auth.authenticate, async (req, res, next) => {
     res.status(200).send({
       ...result,
       totalLikes: totalLikes,
-      userHasLiked: like
+      userHasLiked: like,
     });
   } catch (error) {
     next(error);
   }
 });
-
-/**
- * Get like status and count for a recipe
- * 
- * @route GET /recipes/:recipeId/likes
- * @param {string} req.params.recipeId - Spoonacular ID of the recipe
- * @returns {Object} Like count and user's like status
- * @returns {number} res.status - 200 on success
- */
-router.get("/:recipeId/likes", async (req, res, next) => {
-  try {
-    const recipeId = req.params.recipeId;
-    const userId = req.session?.user_id;
-
-    const totalLikes = await recipes_utils.getRecipeLikesCount(recipeId);
-    const userHasLiked = userId ? await recipes_utils.hasUserLikedRecipe(userId, recipeId) : false;
-
-    res.status(200).send({
-      totalLikes: totalLikes,
-      userHasLiked: userHasLiked
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
 
 module.exports = router;
