@@ -1,0 +1,3 @@
+@echo off
+echo Starting server with administrator privileges...
+powershell -Command "Start-Process cmd -ArgumentList '/c cd /d \"%CD%\" && npm start' -Verb RunAs"

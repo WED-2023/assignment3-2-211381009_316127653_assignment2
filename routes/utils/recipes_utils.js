@@ -7,6 +7,41 @@
 const axios = require("axios");
 const api_domain = "https://api.spoonacular.com/recipes";
 const DButils = require("./DButils");
+const cacheManager = require("./cache_manager");
+
+// Rate limiting tracking
+let requestCount = 0;
+let lastRequestTime = Date.now();
+let lastThrottleWarning = 0;
+const MAX_REQUESTS_PER_MINUTE = 10; // Conservative limit to avoid hitting Spoonacular rate limits
+const THROTTLE_WARNING_INTERVAL = 10000; // Only show throttle warning every 10 seconds
+
+/**
+ * Check if we should throttle API requests to avoid rate limits
+ */
+function shouldThrottleRequest() {
+  const now = Date.now();
+  const timeDiff = now - lastRequestTime;
+
+  // Reset counter if more than a minute has passed
+  if (timeDiff > 60000) {
+    requestCount = 0;
+    lastRequestTime = now;
+  }
+
+  if (requestCount >= MAX_REQUESTS_PER_MINUTE) {
+    // Only show warning every 10 seconds to reduce spam
+    if (now - lastThrottleWarning > THROTTLE_WARNING_INTERVAL) {
+      console.warn(
+        `⚠️  Rate limiting: Made ${requestCount} requests in the last minute. Throttling API calls...`
+      );
+      lastThrottleWarning = now;
+    }
+    return true;
+  }
+
+  return false;
+}
 
 /**
  * Fetches detailed information about a recipe from the Spoonacular API
@@ -16,12 +51,43 @@ const DButils = require("./DButils");
  * @throws {Error} - If the API request fails
  */
 async function getRecipeInformation(recipe_id) {
-  return await axios.get(`${api_domain}/${recipe_id}/information`, {
-    params: {
-      includeNutrition: false,
-      apiKey: process.env.spooncular_apiKey,
-    },
-  });
+  const endpoint = "recipe_information";
+  const params = { recipe_id, includeNutrition: false };
+
+  // Check advanced cache first
+  const cachedData = await cacheManager.get(endpoint, params);
+  if (cachedData) {
+    return { data: cachedData };
+  }
+
+  // Check rate limiting
+  if (shouldThrottleRequest()) {
+    throw new Error(
+      `RATE_LIMIT_THROTTLE: Too many requests, using throttling for recipe ${recipe_id}`
+    );
+  }
+
+  try {
+    console.log(`🌐 API call for recipe ${recipe_id} information`);
+    requestCount++;
+    const response = await axios.get(`${api_domain}/${recipe_id}/information`, {
+      params: {
+        includeNutrition: false,
+        apiKey: process.env.spooncular_apiKey,
+      },
+    });
+
+    // Store in advanced cache
+    await cacheManager.set(endpoint, params, response.data);
+
+    return response;
+  } catch (error) {
+    if (error.response && error.response.status === 429) {
+      // Rate limit exceeded - throw specific error
+      throw new Error(`API_RATE_LIMIT_EXCEEDED: ${error.message}`);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -35,87 +101,143 @@ async function getRecipeInformation(recipe_id) {
  * @throws {Error} - If the API request fails or the response is invalid
  */
 async function getRecipeDetails(recipe_id) {
-  let recipe_info = await getRecipeInformation(recipe_id);
-  let {
-    id,
-    title,
-    readyInMinutes,
-    image,
-    aggregateLikes,
-    vegan,
-    vegetarian,
-    glutenFree,
-    extendedIngredients,
-    instructions,
-    servings,
-  } = recipe_info.data;
+  try {
+    let recipe_info = await getRecipeInformation(recipe_id);
+    let {
+      id,
+      title,
+      readyInMinutes,
+      image,
+      aggregateLikes,
+      vegan,
+      vegetarian,
+      glutenFree,
+      extendedIngredients,
+      instructions,
+      servings,
+    } = recipe_info.data;
 
-  return {
-    id: id,
-    title: title,
-    readyInMinutes: readyInMinutes,
-    image: image,
-    popularity: aggregateLikes,
-    vegan: vegan,
-    vegetarian: vegetarian,
-    glutenFree: glutenFree,
-    ingredients: extendedIngredients,
-    instructions: instructions,
-    servings: servings,
-  };
+    return {
+      id: id,
+      title: title,
+      readyInMinutes: readyInMinutes,
+      image: image,
+      popularity: aggregateLikes,
+      vegan: vegan,
+      vegetarian: vegetarian,
+      glutenFree: glutenFree,
+      ingredients: extendedIngredients,
+      instructions: instructions,
+      servings: servings,
+    };
+  } catch (error) {
+    console.error(`❌ Failed to fetch recipe ${recipe_id}:`, error.message);
+
+    if (error.response && error.response.status === 402) {
+      console.error(
+        "🚫 Daily API limit reached (150 requests). Returning fallback recipe details."
+      );
+      return getFallbackRecipeDetails(recipe_id);
+    } else if (error.response && error.response.status === 429) {
+      console.error(
+        "⚠️  API Rate limit exceeded. Returning fallback recipe details."
+      );
+      return getFallbackRecipeDetails(recipe_id);
+    } else {
+      console.error(
+        "🔧 API error details:",
+        error.response?.data || error.message
+      );
+      // Return fallback data for any other API error too
+      console.error("Returning fallback recipe details due to API error.");
+      return getFallbackRecipeDetails(recipe_id);
+    }
+  }
 }
 
 /**
  * Retrieves preview information for multiple recipes by their IDs
  *
- * This function fetches basic information for a list of recipes in parallel,
- * handling any errors for individual recipes without failing the entire operation.
+ * This function fetches basic information for a list of recipes using batching
+ * to avoid overwhelming the API with simultaneous requests.
  *
  * @param {Array<number>} recipes_ids_list - Array of recipe IDs to fetch preview data for
  * @returns {Promise<Array<Object>>} - A promise that resolves to an array of recipe preview objects
  *                                    Each preview contains id, title, readyInMinutes, image, and popularity
  */
 async function getRecipesPreview(recipes_ids_list) {
-  let recipes_info = await Promise.all(
-    recipes_ids_list.map(async (recipe_id) => {
-      try {
-        const recipe = await getRecipeInformation(recipe_id);
-        const {
-          id,
-          title,
-          readyInMinutes,
-          image,
-          aggregateLikes,
-          vegan,
-          vegetarian,
-          glutenFree,
-        } = recipe.data;
-        return {
-          id: id,
-          title: title,
-          readyInMinutes: readyInMinutes,
-          image: image,
-          popularity: aggregateLikes,
-          vegan: vegan,
-          vegetarian: vegetarian,
-          glutenFree: glutenFree,
-        };
-      } catch (error) {
-        console.log(`Failed to fetch recipe ${recipe_id}: ${error.message}`);
-        // Return a placeholder with error information instead of null
-        return {
-          id: recipe_id,
-          title: "Recipe information unavailable",
-          readyInMinutes: 0,
-          image: "",
-          popularity: 0,
-          error: true,
-        };
-      }
-    })
-  );
-  // Filter out recipes with errors if needed or keep them with error flag
-  return recipes_info.filter((recipe) => !recipe.error);
+  if (recipes_ids_list.length <= 5) {
+    // For small lists, use the original method to avoid unnecessary delays
+    let recipes_info = await Promise.all(
+      recipes_ids_list.map(async (recipe_id) => {
+        try {
+          const recipe = await getRecipeInformation(recipe_id);
+          const {
+            id,
+            title,
+            readyInMinutes,
+            image,
+            aggregateLikes,
+            vegan,
+            vegetarian,
+            glutenFree,
+          } = recipe.data;
+          return {
+            id: id,
+            title: title,
+            readyInMinutes: readyInMinutes,
+            image: image,
+            popularity: aggregateLikes,
+            vegan: vegan,
+            vegetarian: vegetarian,
+            glutenFree: glutenFree,
+          };
+        } catch (error) {
+          // Handle rate limiting specifically
+          if (
+            error.message.includes("API_RATE_LIMIT_EXCEEDED") ||
+            error.message.includes("RATE_LIMIT_THROTTLE")
+          ) {
+            console.log(
+              `⚠️  API Rate limit or throttling for recipe ${recipe_id}. Using fallback data.`
+            );
+            return {
+              id: recipe_id,
+              title: "Recipe Details Unavailable (Rate Limited)",
+              readyInMinutes: "N/A",
+              image: `https://placehold.co/312x231?text=Recipe+${recipe_id}`,
+              popularity: 0,
+              vegan: false,
+              vegetarian: false,
+              glutenFree: false,
+              apiLimitExceeded: true,
+            };
+          }
+
+          console.log(`Failed to fetch recipe ${recipe_id}: ${error.message}`);
+          // Return a placeholder with error information instead of null
+          return {
+            id: recipe_id,
+            title: "Recipe information unavailable",
+            readyInMinutes: 0,
+            image: `https://placehold.co/312x231?text=Recipe+${recipe_id}`,
+            popularity: 0,
+            vegan: false,
+            vegetarian: false,
+            glutenFree: false,
+            error: true,
+          };
+        }
+      })
+    );
+    return recipes_info.filter((recipe) => !recipe.error);
+  } else {
+    // For larger lists, use batch processing
+    console.log(
+      `🔄 Processing ${recipes_ids_list.length} recipes in batches to avoid rate limits...`
+    );
+    return await processRecipesBatch(recipes_ids_list);
+  }
 }
 
 /**
@@ -126,23 +248,124 @@ async function getRecipesPreview(recipes_ids_list) {
  * @throws {Error} - If the API request fails
  */
 async function getRandomRecipes(count = 3) {
-  const response = await axios.get(`${api_domain}/random`, {
-    params: {
-      number: count,
-      apiKey: process.env.spooncular_apiKey,
-    },
-  });
+  const endpoint = "random_recipes";
+  const params = { number: count };
 
-  return response.data.recipes.map((recipe) => ({
-    id: recipe.id,
-    title: recipe.title,
-    readyInMinutes: recipe.readyInMinutes,
-    image: recipe.image,
-    popularity: recipe.aggregateLikes,
-    vegan: recipe.vegan,
-    vegetarian: recipe.vegetarian,
-    glutenFree: recipe.glutenFree,
-  }));
+  try {
+    console.log(`🌐 API call for ${count} random recipes`);
+    const response = await axios.get(`${api_domain}/random`, {
+      params: {
+        number: count,
+        apiKey: process.env.spooncular_apiKey,
+      },
+    });
+
+    // Store raw data in cache
+    await cacheManager.set(endpoint, params, response.data.recipes);
+
+    return response.data.recipes.map((recipe) => ({
+      id: recipe.id,
+      title: recipe.title,
+      readyInMinutes: recipe.readyInMinutes,
+      image: recipe.image,
+      popularity: recipe.aggregateLikes,
+      vegan: recipe.vegan,
+      vegetarian: recipe.vegetarian,
+      glutenFree: recipe.glutenFree,
+    }));
+  } catch (error) {
+    console.error(
+      "❌ Error fetching random recipes from Spoonacular API:",
+      error.message
+    );
+    if (error.response && error.response.status === 402) {
+      console.error(
+        "🚫 Daily API limit reached (150 requests). Returning fallback recipes."
+      );
+      // Return fallback mock data instead of throwing error
+      return getFallbackRandomRecipes(count);
+    } else if (error.response && error.response.status === 429) {
+      console.error("⚠️  API Rate limit exceeded. Returning fallback recipes.");
+      // Return fallback mock data instead of throwing error
+      return getFallbackRandomRecipes(count);
+    } else {
+      console.error(
+        "🔧 API error details:",
+        error.response?.data || error.message
+      );
+      // Return fallback data for any other API error too
+      console.error("Returning fallback recipes due to API error.");
+      return getFallbackRandomRecipes(count);
+    }
+  }
+}
+
+/**
+ * Provides fallback mock data when Spoonacular API is unavailable
+ *
+ * @param {number} count - Number of fallback recipes to return
+ * @returns {Array<Object>} - Array of mock recipe objects
+ */
+function getFallbackRandomRecipes(count = 3) {
+  const fallbackRecipes = [
+    {
+      id: "fallback_1",
+      title: "Classic Spaghetti Carbonara (API Unavailable)",
+      readyInMinutes: 30,
+      image: "https://placehold.co/312x231?text=Spaghetti+Carbonara",
+      popularity: 85,
+      vegan: false,
+      vegetarian: false,
+      glutenFree: false,
+      apiUnavailable: true,
+    },
+    {
+      id: "fallback_2",
+      title: "Chicken Caesar Salad (API Unavailable)",
+      readyInMinutes: 15,
+      image: "https://placehold.co/312x231?text=Caesar+Salad",
+      popularity: 92,
+      vegan: false,
+      vegetarian: false,
+      glutenFree: false,
+      apiUnavailable: true,
+    },
+    {
+      id: "fallback_3",
+      title: "Vegetable Stir Fry (API Unavailable)",
+      readyInMinutes: 20,
+      image: "https://placehold.co/312x231?text=Vegetable+Stir+Fry",
+      popularity: 78,
+      vegan: true,
+      vegetarian: true,
+      glutenFree: true,
+      apiUnavailable: true,
+    },
+    {
+      id: "fallback_4",
+      title: "Chocolate Chip Cookies (API Unavailable)",
+      readyInMinutes: 45,
+      image: "https://placehold.co/312x231?text=Chocolate+Cookies",
+      popularity: 95,
+      vegan: false,
+      vegetarian: true,
+      glutenFree: false,
+      apiUnavailable: true,
+    },
+    {
+      id: "fallback_5",
+      title: "Grilled Salmon with Herbs (API Unavailable)",
+      readyInMinutes: 25,
+      image: "https://placehold.co/312x231?text=Grilled+Salmon",
+      popularity: 88,
+      vegan: false,
+      vegetarian: false,
+      glutenFree: true,
+      apiUnavailable: true,
+    },
+  ];
+
+  return fallbackRecipes.slice(0, count);
 }
 
 /**
@@ -159,9 +382,33 @@ async function getRandomRecipes(count = 3) {
  * @returns {Promise<Array<Object>>} - A promise that resolves to an array of recipe preview objects
  * @throws {Object} - Throws an error object with status and message if query is missing
  */
-async function searchRecipes(query, number = 5, cuisine, diet, intolerance) {
+async function searchRecipes(
+  query,
+  number = 5,
+  cuisine,
+  diet,
+  intolerance,
+  sort,
+  user_id = null
+) {
   if (!query) {
     throw { status: 400, message: "Query parameter is missing" };
+  }
+
+  const endpoint = "search_recipes";
+  const cacheParams = {
+    query,
+    number,
+    cuisine: cuisine || null,
+    diet: diet || null,
+    intolerance: intolerance || null,
+    sort: sort || null,
+  };
+
+  // Check cache first
+  const cachedData = await cacheManager.get(endpoint, cacheParams);
+  if (cachedData) {
+    return cachedData;
   }
 
   const params = {
@@ -175,16 +422,69 @@ async function searchRecipes(query, number = 5, cuisine, diet, intolerance) {
   if (diet) params.diet = diet;
   if (intolerance) params.intolerances = intolerance;
 
-  const response = await axios.get(`${api_domain}/complexSearch`, { params });
-
-  if (response.data.totalResults === 0) {
-    return [];
+  // Add sorting parameters
+  if (sort) {
+    if (sort === "time") {
+      params.sort = "time";
+      params.sortDirection = "asc"; // Shorter time is better
+    } else if (sort === "popularity") {
+      params.sort = "popularity";
+      params.sortDirection = "desc"; // Higher popularity is better
+    }
   }
+  try {
+    console.log(`🌐 API call for search: "${query}"`);
+    const response = await axios.get(`${api_domain}/complexSearch`, { params });
 
-  const recipes = await getRecipesPreview(
-    response.data.results.map((recipe) => recipe.id)
-  );
-  return recipes;
+    if (response.data.totalResults === 0) {
+      const emptyResult = [];
+      // Cache empty results too to avoid repeated API calls
+      await cacheManager.set(endpoint, cacheParams, emptyResult);
+      return emptyResult;
+    }    const recipes = await getRecipesPreviewWithLikes(
+      response.data.results.map((recipe) => recipe.id),
+      user_id
+    );
+
+    // Store in cache
+    await cacheManager.set(endpoint, cacheParams, recipes);
+
+    return recipes;
+  } catch (error) {
+    console.error(
+      `❌ Error searching recipes with query "${query}":`,
+      error.message
+    );
+
+    if (error.response && error.response.status === 402) {
+      console.error(
+        "🚫 Daily API limit reached (150 requests). Search unavailable."
+      );
+      throw {
+        status: 402,
+        message:
+          "The daily Spoonacular API request limit has been reached. Search is temporarily unavailable. Please try again later.",
+      };
+    } else if (error.response && error.response.status === 429) {
+      console.error(
+        "⚠️  API Rate limit exceeded. Too many requests in a short time."
+      );
+      throw {
+        status: 429,
+        message:
+          "Too many requests to the Spoonacular API. Please wait a moment and try again.",
+      };
+    } else {
+      console.error(
+        "🔧 API error details:",
+        error.response?.data || error.message
+      );
+      throw {
+        status: error.response?.status || 500,
+        message: "Failed to search recipes. Please try again later.",
+      };
+    }
+  }
 }
 
 /**
@@ -228,6 +528,12 @@ async function toggleRecipeLike(user_id, recipe_id, like) {
  * @param {number} recipe_id - The Spoonacular ID of the recipe
  * @returns {Promise<number>} - Total number of likes
  */
+/**
+ * Get the total number of likes for a recipe (Spoonacular + user likes)
+ *
+ * @param {number} recipe_id - The Spoonacular ID of the recipe
+ * @returns {Promise<number>} - Total number of likes
+ */
 async function getRecipeLikesCount(recipe_id) {
   try {
     // Get user likes count from database
@@ -237,35 +543,19 @@ async function getRecipeLikesCount(recipe_id) {
 
     // Handle MySQL2 result format correctly
     const userLikes = parseInt(userLikesResult[0][0].userLikes) || 0;
-    console.log(`User likes for recipe ${recipe_id}:`, userLikes);
 
     // Get Spoonacular likes from API
     let spoonacularLikes = 0;
     try {
       const recipeInfo = await getRecipeInformation(recipe_id);
       spoonacularLikes = parseInt(recipeInfo.data.aggregateLikes) || 0;
-      console.log(
-        `Spoonacular likes for recipe ${recipe_id}:`,
-        spoonacularLikes
-      );
     } catch (apiError) {
-      console.warn(
-        `Failed to get Spoonacular likes for recipe ${recipe_id}:`,
-        apiError.message
-      );
-      // Keep as 0 if API fails
+      // Silently use 0 if API fails (rate limit, daily limit, etc.)
+      // This reduces log spam while still providing functionality
+      spoonacularLikes = 0;
     }
 
     const totalLikes = spoonacularLikes + userLikes;
-    console.log(
-      `Total likes for recipe ${recipe_id}:`,
-      totalLikes,
-      "(",
-      userLikes,
-      "user likes +",
-      spoonacularLikes,
-      "Spoonacular likes)"
-    );
     return totalLikes;
   } catch (error) {
     console.error("Error getting recipe likes count:", error);
@@ -357,19 +647,174 @@ async function getRecipesPreviewWithLikes(recipes_ids_list, user_id = null) {
           userHasLiked: userHasLiked,
         };
       } catch (error) {
-        console.log(`Failed to fetch recipe ${recipe_id}: ${error.message}`);
+        // Handle rate limiting specifically
+        if (
+          error.message.includes("API_RATE_LIMIT_EXCEEDED") ||
+          error.message.includes("RATE_LIMIT_THROTTLE")
+        ) {
+          console.log(
+            `⚠️  API Rate limit or throttling for recipe ${recipe_id}. Using fallback data.`
+          );
+        } else {
+          console.log(`Failed to fetch recipe ${recipe_id}: ${error.message}`);
+        }
+
+        // Still get the likes count even if recipe details fail
+        const totalLikes = await getRecipeLikesCount(recipe_id);
+        const userHasLiked = user_id
+          ? await hasUserLikedRecipe(user_id, recipe_id)
+          : false;
+
         return {
           id: recipe_id,
-          title: "Recipe information unavailable",
-          readyInMinutes: 0,
-          image: "",
-          popularity: 0,
+          title:
+            error.message.includes("API_RATE_LIMIT_EXCEEDED") ||
+            error.message.includes("RATE_LIMIT_THROTTLE")
+              ? "Recipe Details Unavailable (Rate Limited)"
+              : "Recipe information unavailable",
+          readyInMinutes: "N/A",
+          image: `https://placehold.co/312x231?text=Recipe+${recipe_id}`,
+          popularity: totalLikes,
+          vegan: false,
+          vegetarian: false,
+          glutenFree: false,
+          userHasLiked: userHasLiked,
+          apiLimitExceeded:
+            error.message.includes("API_RATE_LIMIT_EXCEEDED") ||
+            error.message.includes("RATE_LIMIT_THROTTLE"),
           error: true,
         };
       }
     })
   );
-  return recipes_info.filter((recipe) => !recipe.error);
+
+  // Don't filter out recipes with errors - they still have valid like counts
+  // Only filter out if we have no recipes at all
+  return recipes_info;
+}
+
+/**
+ * Process recipes in batches to avoid overwhelming the API with simultaneous requests
+ */
+async function processRecipesBatch(recipe_ids, batchSize = 3, delayMs = 1000) {
+  const results = [];
+
+  for (let i = 0; i < recipe_ids.length; i += batchSize) {
+    const batch = recipe_ids.slice(i, i + batchSize);
+    console.log(
+      `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(
+        recipe_ids.length / batchSize
+      )}: recipes ${batch.join(", ")}`
+    );
+
+    // Process batch in parallel
+    const batchPromises = batch.map(async (recipe_id) => {
+      try {
+        const recipe = await getRecipeInformation(recipe_id);
+        const {
+          id,
+          title,
+          readyInMinutes,
+          image,
+          aggregateLikes,
+          vegan,
+          vegetarian,
+          glutenFree,
+        } = recipe.data;
+        return {
+          id: id,
+          title: title,
+          readyInMinutes: readyInMinutes,
+          image: image,
+          popularity: aggregateLikes,
+          vegan: vegan,
+          vegetarian: vegetarian,
+          glutenFree: glutenFree,
+        };
+      } catch (error) {
+        // Handle rate limiting specifically
+        if (
+          error.message.includes("API_RATE_LIMIT_EXCEEDED") ||
+          error.message.includes("RATE_LIMIT_THROTTLE")
+        ) {
+          console.log(
+            `⚠️  API Rate limit or throttling for recipe ${recipe_id}. Using fallback data.`
+          );
+          return {
+            id: recipe_id,
+            title: "Recipe Details Unavailable (Rate Limited)",
+            readyInMinutes: "N/A",
+            image: `https://placehold.co/312x231?text=Recipe+${recipe_id}`,
+            popularity: 0,
+            vegan: false,
+            vegetarian: false,
+            glutenFree: false,
+            apiLimitExceeded: true,
+          };
+        }
+
+        console.log(`Failed to fetch recipe ${recipe_id}: ${error.message}`);
+        return {
+          id: recipe_id,
+          title: "Recipe information unavailable",
+          readyInMinutes: 0,
+          image: `https://placehold.co/312x231?text=Recipe+${recipe_id}`,
+          popularity: 0,
+          vegan: false,
+          vegetarian: false,
+          glutenFree: false,
+          error: true,
+        };
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    results.push(...batchResults);
+
+    // Add delay between batches (except for the last batch)
+    if (i + batchSize < recipe_ids.length) {
+      console.log(`⏱️  Waiting ${delayMs}ms before next batch...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return results.filter((recipe) => !recipe.error);
+}
+
+/**
+ * Provides fallback recipe details when Spoonacular API is unavailable
+ *
+ * @param {string|number} recipe_id - The recipe ID
+ * @returns {Object} - Mock recipe details object
+ */
+function getFallbackRecipeDetails(recipe_id) {
+  return {
+    id: recipe_id,
+    title: `Recipe #${recipe_id} (API Unavailable)`,
+    readyInMinutes: 30,
+    image: `https://placehold.co/312x231?text=Recipe+${recipe_id}`,
+    popularity: 0,
+    vegan: false,
+    vegetarian: false,
+    glutenFree: false,
+    ingredients: [
+      {
+        id: 1,
+        original: "Ingredients not available (API limit reached)",
+        name: "unavailable",
+        amount: 0,
+        unit: "",
+      },
+    ],
+    instructions: [
+      {
+        number: 1,
+        step: "Recipe instructions are not available due to API limitations. Please try again later when the API quota resets.",
+      },
+    ],
+    servings: 1,
+    apiUnavailable: true,
+  };
 }
 
 exports.getRecipeDetails = getRecipeDetails;
@@ -381,3 +826,4 @@ exports.getRecipeLikesCount = getRecipeLikesCount;
 exports.hasUserLikedRecipe = hasUserLikedRecipe;
 exports.getRecipeDetailsWithLikes = getRecipeDetailsWithLikes;
 exports.getRecipesPreviewWithLikes = getRecipesPreviewWithLikes;
+exports.processRecipesBatch = processRecipesBatch;

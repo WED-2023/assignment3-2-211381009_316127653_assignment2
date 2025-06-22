@@ -10,8 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.19.2",
-    "bcrypt": "^4.0.1",
+    "ax": "^0.2.2",
+    "axios": "^1.10.0",
+    "bcrypt": "^6.0.0",
+    "bootstrap-vue": "^1.5.1",
     "client-sessions": "^0.8.0",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
@@ -22,10 +24,14 @@
     "morgan": "^1.10.0",
     "mssql": "^6.2.0",
     "mysql2": "^3.14.1",
-    "nodemon": "^2.0.4",
-    "pg": "^8.2.1"
+    "pg": "^8.2.1",
+    "vue": "^3.5.16",
+    "vue-axios": "^3.5.2",
+    "vue-router": "^4.5.1",
+    "vuelidate": "^0.7.7"
   },
   "devDependencies": {
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "nodemon": "^3.1.10"
   }
 }

@@ -18,7 +18,75 @@ const recipe_utils = require("./utils/recipes_utils");
 const { auth, validation } = require("../middleware");
 
 /**
- * Apply authentication middleware to all routes in this router
+ * Check if a username is already taken
+ *
+ * @route GET /users/checkUsername/:username
+ * @param {string} req.params.username - Username to check
+ * @returns {Object} Object indicating if username exists
+ * @returns {number} res.status - 200 with exists flag
+ */
+router.get("/checkUsername/:username", async (req, res, next) => {
+  try {
+    const username = req.params.username.trim();
+    console.log(`Checking username: "${username}"`);
+
+    // Escape username to prevent SQL injection
+    const escapedUsername = username.replace(/'/g, "''");
+
+    const result = await DButils.execQuery(
+      `SELECT username FROM users WHERE username='${escapedUsername}'`
+    );
+
+    console.log(`Raw query result:`, result);
+    console.log(`Result type:`, typeof result);
+    console.log(`Result is array:`, Array.isArray(result));
+
+    // Handle different MySQL result formats
+    let users = result;
+    if (
+      Array.isArray(result) &&
+      result.length === 2 &&
+      Array.isArray(result[0])
+    ) {
+      // MySQL2 format: [rows, fields]
+      users = result[0];
+    } else if (
+      Array.isArray(result) &&
+      result.length > 0 &&
+      result[0] &&
+      typeof result[0] === "object"
+    ) {
+      // Direct rows array
+      users = result;
+    } else {
+      // Fallback
+      users = Array.isArray(result) ? result : [];
+    }
+
+    console.log(`Processed users:`, users);
+    console.log(`Users count: ${users.length}`);
+
+    const exists = users.length > 0;
+    const responseData = {
+      exists: exists,
+      message: exists ? "Username is taken" : "Username is available",
+      debug: {
+        rawResult: result,
+        processedUsers: users,
+        usersLength: users.length,
+      },
+    };
+
+    console.log(`Sending response:`, responseData);
+    res.status(200).send(responseData);
+  } catch (error) {
+    console.error("Error in checkUsername:", error);
+    next(error);
+  }
+});
+
+/**
+ * Apply authentication middleware to all routes below this point
  *
  * This ensures all user-related endpoints are protected and can only
  * be accessed by authenticated users with valid sessions.
@@ -51,12 +119,10 @@ router.post("/favorites", async (req, res, next) => {
     }
 
     await user_utils.markAsFavorite(user_id, recipe_id);
-    res
-      .status(200)
-      .send({
-        message: "Recipe successfully saved as favorite",
-        success: true,
-      });
+    res.status(200).send({
+      message: "Recipe successfully saved as favorite",
+      success: true,
+    });
   } catch (error) {
     next(error);
   }
@@ -82,9 +148,12 @@ router.get("/favorites", async (req, res, next) => {
       res.status(200).send([]);
       return;
     }
-      // Use enhanced preview function to include like information
-    const results = await recipe_utils.getRecipesPreviewWithLikes(recipes_id_array, user_id);
-    res.status(200).send(results.filter(recipe => recipe !== null));
+    // Use enhanced preview function to include like information
+    const results = await recipe_utils.getRecipesPreviewWithLikes(
+      recipes_id_array,
+      user_id
+    );
+    res.status(200).send(results.filter((recipe) => recipe !== null));
   } catch (error) {
     next(error);
   }
@@ -108,12 +177,10 @@ router.delete("/favorites", async (req, res, next) => {
     const removed = await user_utils.removeFavorite(user_id, recipe_id);
 
     if (removed) {
-      res
-        .status(200)
-        .send({
-          message: "Recipe successfully removed from favorites",
-          success: true,
-        });
+      res.status(200).send({
+        message: "Recipe successfully removed from favorites",
+        success: true,
+      });
     } else {
       res
         .status(404)
@@ -191,7 +258,10 @@ router.get("/lastWatchedRecipes", async (req, res, next) => {
     const recipes_id = await user_utils.getLastWatchedRecipes(user_id, 3);
     let recipes_id_array = [];
     recipes_id.map((element) => recipes_id_array.push(element.recipe_id));
-    const results = await recipe_utils.getRecipesPreviewWithLikes(recipes_id_array, user_id);
+    const results = await recipe_utils.getRecipesPreviewWithLikes(
+      recipes_id_array,
+      user_id
+    );
     res.status(200).send(results);
   } catch (error) {
     next(error);
@@ -215,7 +285,10 @@ router.get("/allWatchedRecipes", async (req, res, next) => {
     const recipes_id = await user_utils.getWatchedRecipes(user_id);
     let recipes_id_array = [];
     recipes_id.map((element) => recipes_id_array.push(element.recipe_id));
-    const results = await recipe_utils.getRecipesPreviewWithLikes(recipes_id_array, user_id);
+    const results = await recipe_utils.getRecipesPreviewWithLikes(
+      recipes_id_array,
+      user_id
+    );
     res.status(200).send(results);
   } catch (error) {
     next(error);
@@ -235,8 +308,16 @@ router.get("/allWatchedRecipes", async (req, res, next) => {
  */
 router.get("/lastSearch", async (req, res, next) => {
   try {
-    const results = req.session.lastSearch || [];
-    res.status(200).send(results);
+    const user_id = req.session.user_id;
+
+    // Get search history from database instead of session
+    const searchHistory = await user_utils.getSearchHistory(user_id);
+
+    if (searchHistory && searchHistory.search_results) {
+      res.status(200).send(searchHistory.search_results);
+    } else {
+      res.status(200).send([]);
+    }
   } catch (error) {
     next(error);
   }
@@ -328,6 +409,31 @@ router.get("/myRecipes/:recipeId", async (req, res, next) => {
 });
 
 /**
+ * Delete a specific private recipe
+ *
+ * @route DELETE /users/myRecipes/:recipeId
+ * @authentication Required
+ * @param {string} req.params.recipeId - ID of the private recipe to delete
+ * @returns {Object} Success message
+ * @returns {number} res.status - 200 on success
+ * @throws {Error} If recipe not found, not owned by user, or delete operation fails
+ */
+router.delete("/myRecipes/:recipeId", async (req, res, next) => {
+  try {
+    const user_id = req.session.user_id;
+    const recipe_id = req.params.recipeId;
+
+    await user_utils.deletePrivateRecipe(user_id, recipe_id);
+    res.status(200).send({
+      message: "Recipe deleted successfully",
+      success: true,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * Get all family recipes for the logged-in user
  *
  * @route GET /users/familyRecipes
@@ -368,6 +474,76 @@ router.get("/familyRecipes/:recipeId", async (req, res, next) => {
       user_id
     );
     res.status(200).send(recipe);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Add a new family recipe for the user
+ *
+ * @route POST /users/familyRecipes
+ * @authentication Required
+ * @param {Object} req.body - Recipe details
+ * @param {string} req.body.recipe_name - Recipe name (required)
+ * @param {string} req.body.owner_name - Recipe owner (required)
+ * @param {string} req.body.when_to_prepare - When to prepare (required)
+ * @param {Array} req.body.ingredients - List of ingredients (required)
+ * @param {string} req.body.instructions - Preparation instructions (required)
+ * @param {string} [req.body.image_url] - Recipe image URL
+ * @returns {Object} Success message with recipe_id
+ * @returns {number} res.status - 201 on success
+ * @throws {Error} If validation fails or database operation fails
+ */
+router.post("/familyRecipes", async (req, res, next) => {
+  try {
+    const user_id = req.session.user_id;
+    const recipe_details = req.body;
+
+    // Basic validation, more can be added in user_utils if needed
+    if (
+      !recipe_details.recipe_name ||
+      !recipe_details.owner_name ||
+      !recipe_details.when_to_prepare ||
+      !recipe_details.ingredients ||
+      !recipe_details.instructions
+    ) {
+      return res
+        .status(400)
+        .send({ message: "Missing required recipe fields", success: false });
+    }
+
+    const recipe_id = await user_utils.addFamilyRecipe(user_id, recipe_details);
+    res.status(201).send({
+      message: "Family recipe created successfully",
+      success: true,
+      recipe_id: recipe_id,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Delete a specific family recipe
+ *
+ * @route DELETE /users/familyRecipes/:recipeId
+ * @authentication Required
+ * @param {string} req.params.recipeId - ID of the family recipe to delete
+ * @returns {Object} Success message
+ * @returns {number} res.status - 200 on success
+ * @throws {Error} If recipe not found, not owned by user, or delete operation fails
+ */
+router.delete("/familyRecipes/:recipeId", async (req, res, next) => {
+  try {
+    const user_id = req.session.user_id;
+    const recipe_id = req.params.recipeId;
+
+    await user_utils.deleteFamilyRecipe(user_id, recipe_id);
+    res.status(200).send({
+      message: "Family recipe deleted successfully",
+      success: true,
+    });
   } catch (error) {
     next(error);
   }

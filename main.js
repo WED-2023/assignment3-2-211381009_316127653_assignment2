@@ -1,8 +1,8 @@
 /**
  * Recipe Website API Server
- * 
+ *
  * This is the main entry point for the recipe website backend API.
- * 
+ *
  */
 
 require("dotenv").config();
@@ -12,7 +12,7 @@ var path = require("path");
 var logger = require("morgan");
 const session = require("client-sessions");
 const DButils = require("./routes/utils/DButils");
-const middleware = require('./middleware');
+const middleware = require("./middleware");
 
 /**
  * Initialize Express application
@@ -41,25 +41,23 @@ app.use(
     activeDuration: 1000 * 60 * 5, // if expiresIn < activeDuration,
     cookie: {
       httpOnly: false,
-    }
+    },
     //the session will be extended by activeDuration milliseconds
   })
 );
 app.use(express.urlencoded({ extended: false })); // parse application/x-www-form-urlencoded
 app.use(express.static(path.join(__dirname, "public"))); //To serve static files such as images, CSS files, and JavaScript files
 //local:
-app.use(express.static(path.join(__dirname, "dist")));
+// app.use(express.static(path.join(__dirname, "dist")));
 //remote:
 // app.use(express.static(path.join(__dirname, '../assignment-3-3-frontend/dist')));
 
-app.get("/",function(req,res)
-{ 
-  //remote: 
-  // res.sendFile(path.join(__dirname, '../assignment-3-3-frontend/dist/index.html'));
-  //local:
-  res.sendFile(__dirname+"/index.html");
-
-});
+// app.get("/", function (req, res) {
+//   //remote:
+//   // res.sendFile(path.join(__dirname, '../assignment-3-3-frontend/dist/index.html'));
+//   //local:
+//   res.sendFile(__dirname + "/index.html");
+// });
 
 var port = process.env.PORT || "80"; //local=3000 remote=80
 //#endregion
@@ -67,10 +65,9 @@ const user = require("./routes/user");
 const recipes = require("./routes/recipes");
 const auth = require("./routes/auth");
 
-
 /**
  * Cookie authentication middleware
- * 
+ *
  * Verifies if the user is logged in by checking if the user_id in the session
  * corresponds to a valid user in the database. If valid, sets req.user_id for
  * downstream request handling.
@@ -97,7 +94,7 @@ app.get("/alive", (req, res) => res.send("I'm alive"));
 
 /**
  * Mount API routes
- * 
+ *
  * /users - User-specific operations (requires authentication)
  * /recipes - Recipe-related operations
  * / - Authentication operations (login, register, logout)
@@ -112,22 +109,22 @@ app.use("/", auth);
  */
 app.use(middleware.error.errorHandler);
 
-
-
 /**
  * Start the server and listen for incoming connections
  */
-const server = app.listen(port, () => {
-  console.log(`Server listen on port ${port}`);
-});
+// const server = app.listen(port, () => {
+//   console.log(`Server listen on port ${port}`);
+// });
 
 /**
  * Handle process termination gracefully
  * Closes the server and any open connections before exiting
  */
-process.on("SIGINT", function () {
-  if (server) {
-    server.close(() => console.log("server closed"));
-  }
-  process.exit();
-});
+// process.on("SIGINT", function () {
+//   if (server) {
+//     server.close(() => console.log("server closed"));
+//   }
+//   process.exit();
+// });
+
+module.exports = app;

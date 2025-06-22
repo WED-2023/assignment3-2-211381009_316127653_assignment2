@@ -41,11 +41,13 @@ CREATE TABLE IF NOT EXISTS family_recipes (
     ingredients TEXT NOT NULL COMMENT 'Ingredients as JSON',
     instructions TEXT NOT NULL COMMENT 'Preparation Instructions',
     image_url VARCHAR(500) DEFAULT NULL COMMENT 'Recipe Image URL',
+    readyInMinutes INT DEFAULT NULL COMMENT 'Preparation time in minutes',
+    servings INT DEFAULT NULL COMMENT 'Number of servings',
     PRIMARY KEY (recipe_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- Create private_recipes  table
+-- Create private_recipes table
 CREATE TABLE IF NOT EXISTS private_recipes  (
     recipe_id INT NOT NULL AUTO_INCREMENT COMMENT 'Recipe ID',
     user_id INT NOT NULL COMMENT 'User ID',
@@ -72,25 +74,35 @@ CREATE TABLE IF NOT EXISTS recipe_likes (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
+-- Create user_search_history table to store last search results for each user
+CREATE TABLE IF NOT EXISTS user_search_history (
+    user_id INT NOT NULL COMMENT 'User ID',
+    search_query VARCHAR(255) NOT NULL COMMENT 'Search query text',
+    search_params TEXT COMMENT 'Search parameters as JSON (cuisine, diet, intolerance, sort, number)',
+    search_results TEXT NOT NULL COMMENT 'Search results as JSON array',
+    searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'When the search was performed',
+    PRIMARY KEY (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
 
-INSERT INTO users (username, firstname, lastname, country, password, email, profilePic)
+
+INSERT IGNORE INTO users (username, firstname, lastname, country, password, email, profilePic)
 VALUES 
 ('testuser', 'Test', 'User', 'Israel', '$2b$13$IHs1nKpj595BQTtR2Qs6rOi1TCOGvAB6fVrOIt.6tyiz2rbocA9L2', 'test@example.com', NULL); -- Password is "password"
 
 
-INSERT INTO family_recipes (user_id, recipe_name, owner_name, when_to_prepare, ingredients, instructions, image_url)
+INSERT IGNORE INTO family_recipes (user_id, recipe_name, owner_name, when_to_prepare, ingredients, instructions, image_url, readyInMinutes, servings)
 VALUES 
 (1, 'Cheesecake', 'Tova Katz', 'When having guests', 
  '[{"name":"Biscuits","amount":"14"},{"name":"Eggs","amount":"4"},{"name":"Sugar","amount":"1 cup"},{"name":"Cornflour","amount":"3 tablespoons"},{"name":"Instant vanilla pudding","amount":"3 tablespoons"},{"name":"Sweet cream","amount":"half box"},{"name":"White cheese 9%","amount":"half kilo"},{"name":"Sour cream","amount":"1 box"},{"name":"Lemon zest","amount":"1 lemon"}]', 
  'Crumble the biscuits and place in the bottom of the greased pan, mix all the other ingredients in the order of the ingredients above, and put in the oven at 170 degrees. Once it gets a little brown on top - take it out, take 2 cups of sour cream and mix with a bag of vanilla sugar, spread over the cake and put in the oven when it is turned off. Leave it in the oven for an hour when it is not working.',
- NULL),
+ NULL, 60, 8),
  
 (1, 'Cold salad of peppers and tomatoes', 'Tova Katz', 'Daily', 
- '[{"name":"Light green peppers","amount":"5"},{"name":"Tomatoes","amount":"5"},{"name":"Garlic cloves","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Olive oil","amount":"1 tablespoon"}]', 
- 'Cut the peppers into coarse pieces and put them on the pan with olive oil on it, wait for it to soften then add the chopped garlic, and add the diced tomatoes, salt, mix everything together and leave for another 20 minutes on low heat with a lid.',
- NULL),
+ '[{"name":"Light green peppers","amount":"5"},{"name":"Tomatoes","amount":"5"},{"name":"Garlic cloves","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Olive oil","amount":"1 tablespoon"}]',  'Cut the peppers into coarse pieces and put them on the pan with olive oil on it, wait for it to soften then add the chopped garlic, and add the diced tomatoes, salt, mix everything together and leave for another 20 minutes on low heat with a lid.',
+ '/family-images/Cold-salad-of-peppers-and-tomatoes.jpg', 15, 4),
  
 (1, 'Cold zucchini salad', 'Tova Katz', 'Daily', 
  '[{"name":"Large zucchinis","amount":"3"},{"name":"Onions","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Black pepper","amount":"to taste"}]', 
  'Scratch the zucchini on a grater, put in a pan with a drop of oil, and wait until it softens, and remove it to a bowl as soon as it softens. Chop the onions, put them in the pan until they are browned. Mix the zucchini with the onion in a bowl together, add salt and pepper. And before serving, you can grate a hard-boiled egg inside.',
- NULL);
+ NULL, 15, 4);

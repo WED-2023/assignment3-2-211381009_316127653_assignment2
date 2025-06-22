@@ -79,8 +79,8 @@ router.post("/Login", async (req, res, next) => {
     const users = await DButils.execQuery("SELECT username FROM users");
     console.log("Found users in DB:", users);
 
-    // Fix: Check the first array in the results
-    const usersList = users[0];
+    // Check if users is an array of arrays or just an array of objects
+    const usersList = Array.isArray(users[0]) ? users[0] : users;
     if (!usersList.find((x) => x.username === req.body.username)) {
       console.log("Username not found in database");
       throw { status: 401, message: "Username or Password incorrect" };
@@ -88,7 +88,8 @@ router.post("/Login", async (req, res, next) => {
     const result = await DButils.execQuery(
       `SELECT * FROM users WHERE username = '${req.body.username}'`
     );
-    const user = result[0][0];
+    // Handle different result formats
+    const user = Array.isArray(result[0]) ? result[0][0] : result[0];
 
     console.log("Found user:", { ...user, password: "HIDDEN" });
     console.log("Comparing passwords:");

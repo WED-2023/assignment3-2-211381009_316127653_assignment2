@@ -1,0 +1,47 @@
+Student IDs:
+- 211381009
+- 316127653
+
+API Changes summery:
+Summary of recent changes to openapi.yaml:
+
+1.  **New POST route for Family Recipes:**
+    *   Path: `/users/familyRecipes`
+    *   Method: `POST`
+    *   Summary: "Add a new family recipe"
+    *   Description: "Adds a new family recipe for the logged-in user."
+    *   Request Body: Referenced a new schema `#/components/schemas/AddFamilyRecipe`.
+    *   Responses:
+        *   `201`: Family recipe created successfully.
+        *   `400`: Missing required fields.
+        *   `401`: Unauthorized.
+        *   `500`: Failed to create family recipe.
+
+2.  **New DELETE route for Family Recipes:**
+    *   Path: `/users/familyRecipes/{recipeId}`
+    *   Method: `DELETE`
+    *   Summary: "Delete a family recipe"
+    *   Description: "Deletes a specific family recipe for the logged-in user."
+    *   Parameters: `recipeId` (in path, string, required).
+    *   Responses:
+        *   `200`: Family recipe deleted successfully.
+        *   `400`: Invalid recipe ID format.
+        *   `401`: Unauthorized.
+        *   `404`: Family recipe not found or not owned by user.
+        *   `500`: Failed to delete family recipe.
+
+3.  **New DELETE route for Private Recipes:**
+    *   Path: `/users/myRecipes/{recipeId}`
+    *   Method: `DELETE`
+    *   Summary: "Delete a private recipe"
+    *   Description: "Deletes a specific private recipe that belongs to the logged-in user."
+    *   Parameters: `recipeId` (in path, string, required).
+    *   Responses:
+        *   `200`: Private recipe deleted successfully.
+        *   `400`: Invalid recipe ID format.
+        *   `401`: Unauthorized.
+        *   `404`: Private recipe not found or not owned by user.
+        *   `500`: Failed to delete private recipe.
+
+
+

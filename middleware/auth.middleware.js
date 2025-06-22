@@ -10,8 +10,8 @@ async function authenticate(req, res, next) {
       console.log("Auth Check - Session user_id:", req.session.user_id);
       console.log("Auth Check - Found users:", users);
 
-      // Fix: Check first array in results
-      const usersList = users[0];
+      // Handle different result formats
+      const usersList = Array.isArray(users[0]) ? users[0] : users;
       if (usersList.find((x) => x.user_id === req.session.user_id)) {
         req.user_id = req.session.user_id;
         console.log("Auth Check - User authenticated successfully");

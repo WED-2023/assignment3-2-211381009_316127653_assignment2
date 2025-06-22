@@ -143,6 +143,16 @@ function validateRecipeSearch(req, res, next) {
     }
   }
 
+  // Validate sort parameter if provided
+  if (req.query.sort) {
+    if (!["time", "popularity"].includes(req.query.sort)) {
+      return res.status(400).send({
+        message: "Sort parameter must be 'time' or 'popularity'",
+        success: false,
+      });
+    }
+  }
+
   next();
 }
 

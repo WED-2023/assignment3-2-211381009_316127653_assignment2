@@ -303,11 +303,10 @@ async function getPrivateRecipes(user_id) {
   try {
     const recipes = await DButils.execQuery(
       `SELECT * FROM private_recipes  WHERE user_id='${user_id}'`
-    );
-
-    // Map SQL results to desired format
+    ); // Map SQL results to desired format
     return recipes[0].map((recipe) => ({
-      id: recipe.recipe_id,
+      recipe_id: recipe.recipe_id, // Use recipe_id to match frontend expectations
+      id: recipe.recipe_id, // Keep id for compatibility
       title: recipe.title,
       readyInMinutes: recipe.readyInMinutes,
       image: recipe.image_url,
@@ -315,6 +314,9 @@ async function getPrivateRecipes(user_id) {
       vegan: recipe.vegan === 1,
       vegetarian: recipe.vegetarian === 1,
       glutenFree: recipe.gluten_free === 1,
+      ingredients: recipe.ingredients ? JSON.parse(recipe.ingredients) : [],
+      instructions: recipe.instructions,
+      servings: recipe.servings,
     }));
   } catch (error) {
     console.log(
@@ -359,6 +361,7 @@ async function getPrivateRecipeDetails(recipe_id, user_id) {
       throw { status: 404, message: "Private recipe not found" };
     }
     return {
+      recipe_id: recipe.recipe_id, // Use recipe_id to match frontend expectations
       id: recipe.recipe_id,
       title: recipe.title,
       readyInMinutes: recipe.readyInMinutes,
@@ -405,22 +408,129 @@ async function getAllFamilyRecipes(user_id) {
   const family_recipes_result = await DButils.execQuery(
     `SELECT * FROM family_recipes WHERE user_id=${user_id}`
   );
-  // mysql2 returns [rows, fields], so use [0]
-  const family_recipes = Array.isArray(family_recipes_result[0])
+  let family_recipes = Array.isArray(family_recipes_result[0])
     ? family_recipes_result[0]
     : family_recipes_result;
+
+  console.log(
+    `User ${user_id} has ${family_recipes.length} family recipes from database:`
+  );
+  family_recipes.forEach((recipe) => {
+    console.log(
+      `- Recipe: ${recipe.recipe_name}, Image: ${
+        recipe.image_url || "No image"
+      }`
+    );
+  });
   if (family_recipes.length < 3) {
-    throw { status: 204, message: "There are less than 3 family recipes" };
+    // If user has less than 3 family recipes, provide default ones
+    console.log(
+      `User ${user_id} has ${family_recipes.length} family recipes, providing defaults`
+    );
+
+    const defaultFamilyRecipes = [
+      {
+        recipe_id: `default_1_${user_id}`,
+        recipe_name: "Cheesecake",
+        owner_name: "Tova Katz",
+        when_to_prepare: "When having guests",
+        ingredients:
+          '[{"name":"Biscuits","amount":"14"},{"name":"Eggs","amount":"4"},{"name":"Sugar","amount":"1 cup"},{"name":"Cornflour","amount":"3 tablespoons"},{"name":"Instant vanilla pudding","amount":"3 tablespoons"},{"name":"Sweet cream","amount":"half box"},{"name":"White cheese 9%","amount":"half kilo"},{"name":"Sour cream","amount":"1 box"},{"name":"Lemon zest","amount":"1 lemon"}]',
+        instructions:
+          "Crumble the biscuits and place in the bottom of the greased pan, mix all the other ingredients in the order of the ingredients above, and put in the oven at 170 degrees. Once it gets a little brown on top - take it out, take 2 cups of sour cream and mix with a bag of vanilla sugar, spread over the cake and put in the oven when it is turned off. Leave it in the oven for an hour when it is not working.",
+        image_url: null,
+      },
+      {
+        recipe_id: `default_2_${user_id}`,
+        recipe_name: "Cold salad of peppers and tomatoes",
+        owner_name: "Tova Katz",
+        when_to_prepare: "Daily",
+        ingredients:
+          '[{"name":"Light green peppers","amount":"5"},{"name":"Tomatoes","amount":"5"},{"name":"Garlic cloves","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Olive oil","amount":"1 tablespoon"}]',
+        instructions:
+          "Cut the peppers into coarse pieces and put them on the pan with olive oil on it, wait for it to soften then add the chopped garlic, and add the diced tomatoes, salt, mix everything together and leave for another 20 minutes on low heat with a lid.",
+        image_url: "/family-images/Cold-salad-of-peppers-and-tomatoes.jpg",
+      },
+      {
+        recipe_id: `default_3_${user_id}`,
+        recipe_name: "Cold zucchini salad",
+        owner_name: "Tova Katz",
+        when_to_prepare: "Daily",
+        ingredients:
+          '[{"name":"Large zucchinis","amount":"3"},{"name":"Onions","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Black pepper","amount":"to taste"}]',
+        instructions:
+          "Scratch the zucchini on a grater, put in a pan with a drop of oil, and wait until it softens, and remove it to a bowl as soon as it softens. Chop the onions, put them in the pan until they are browned. Mix the zucchini with the onion in a bowl together, add salt and pepper. And before serving, you can grate a hard-boiled egg inside.",
+        image_url: null,
+      },
+    ];
+
+    // Use default recipes if user has none, or combine with existing ones
+    family_recipes =
+      family_recipes.length === 0
+        ? defaultFamilyRecipes
+        : [
+            ...family_recipes,
+            ...defaultFamilyRecipes.slice(family_recipes.length),
+          ];
   }
-  return family_recipes.map((recipe) => ({
-    id: recipe.recipe_id,
-    title: recipe.recipe_name,
-    image: recipe.image_url,
-    owner: recipe.owner_name,
-    when: recipe.when_to_prepare,
-    ingredients: JSON.parse(recipe.ingredients),
-    instructions: recipe.instructions,
-  }));
+
+  const unique_recipes_map = new Map();
+  family_recipes.forEach((recipe) => {
+    // Debug logging
+    console.log(
+      "Processing recipe:",
+      recipe.recipe_name,
+      "Image URL:",
+      recipe.image_url
+    );
+
+    // Use recipe_id as the unique key, assuming it's the primary key for the recipe
+    if (!unique_recipes_map.has(recipe.recipe_id)) {
+      unique_recipes_map.set(recipe.recipe_id, {
+        // Ensure all fields from the page requirement are mapped
+        recipe_id: recipe.recipe_id, // Keep for keying and potential detail views
+        id: recipe.recipe_id, // For compatibility if 'id' is used elsewhere
+        title: recipe.recipe_name, // Assign placeholder image if image_url is missing
+        image:
+          recipe.image_url ||
+          `https://placehold.co/600x400?text=${encodeURIComponent(
+            recipe.recipe_name
+          )}`,
+        owner: recipe.owner_name,
+        whenToMake: recipe.when_to_prepare, // field name on page is whenToMake
+        ingredients: recipe.ingredients ? JSON.parse(recipe.ingredients) : [], // Parse if string
+        instructions: recipe.instructions,
+        // Add readyInMinutes and servings if they exist in your family_recipes table
+        // For now, providing defaults or N/A if not present
+        readyInMinutes: recipe.readyInMinutes || "N/A", // Assuming this field might exist
+        servings: recipe.servings || "N/A", // Assuming this field might exist
+      });
+    }
+  });
+
+  const processed_recipes = Array.from(unique_recipes_map.values());
+
+  // Debug: Log the final processed recipes
+  console.log(
+    "Final processed recipes:",
+    processed_recipes.map((r) => ({
+      title: r.title,
+      image: r.image,
+    }))
+  );
+
+  // After deduplication, check if we still meet the "at least 3" requirement.
+  // This check is based on the problem description that page should display AT LEAST 3.
+  // If the database has fewer than 3 unique recipes for the user, this will throw.
+  if (processed_recipes.length < 3) {
+    throw {
+      status: 204,
+      message:
+        "You need at least 3 unique family recipes to view this section.",
+    };
+  }
+
+  return processed_recipes;
 }
 
 /**
@@ -439,22 +549,99 @@ async function getFamilyRecipeDetails(recipe_id, user_id) {
   if (!user_id) {
     throw { status: 401, message: "Unauthorized: user_id is required" };
   }
-  const recipes = await DButils.execQuery(
+
+  // Check if this is a default recipe ID
+  if (recipe_id.toString().startsWith(`default_`)) {
+    console.log("Handling default recipe details for:", recipe_id);
+
+    // Get the default recipes
+    const defaultFamilyRecipes = [
+      {
+        recipe_id: `default_1_${user_id}`,
+        recipe_name: "Cheesecake",
+        owner_name: "Tova Katz",
+        when_to_prepare: "When having guests",
+        ingredients:
+          '[{"name":"Biscuits","amount":"14"},{"name":"Eggs","amount":"4"},{"name":"Sugar","amount":"1 cup"},{"name":"Cornflour","amount":"3 tablespoons"},{"name":"Instant vanilla pudding","amount":"3 tablespoons"},{"name":"Sweet cream","amount":"half box"},{"name":"White cheese 9%","amount":"half kilo"},{"name":"Sour cream","amount":"1 box"},{"name":"Lemon zest","amount":"1 lemon"}]',
+        instructions:
+          "Crumble the biscuits and place in the bottom of the greased pan, mix all the other ingredients in the order of the ingredients above, and put in the oven at 170 degrees. Once it gets a little brown on top - take it out, take 2 cups of sour cream and mix with a bag of vanilla sugar, spread over the cake and put in the oven when it is turned off. Leave it in the oven for an hour when it is not working.",
+        image_url: null,
+      },
+      {
+        recipe_id: `default_2_${user_id}`,
+        recipe_name: "Cold salad of peppers and tomatoes",
+        owner_name: "Tova Katz",
+        when_to_prepare: "Daily",
+        ingredients:
+          '[{"name":"Light green peppers","amount":"5"},{"name":"Tomatoes","amount":"5"},{"name":"Garlic cloves","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Olive oil","amount":"1 tablespoon"}]',
+        instructions:
+          "Cut the peppers into coarse pieces and put them on the pan with olive oil on it, wait for it to soften then add the chopped garlic, and add the diced tomatoes, salt, mix everything together and leave for another 20 minutes on low heat with a lid.",
+        image_url: "/family-images/Cold-salad-of-peppers-and-tomatoes.jpg",
+      },
+      {
+        recipe_id: `default_3_${user_id}`,
+        recipe_name: "Cold zucchini salad",
+        owner_name: "Tova Katz",
+        when_to_prepare: "Daily",
+        ingredients:
+          '[{"name":"Large zucchinis","amount":"3"},{"name":"Onions","amount":"3"},{"name":"Salt","amount":"to taste"},{"name":"Black pepper","amount":"to taste"}]',
+        instructions:
+          "Scratch the zucchini on a grater, put in a pan with a drop of oil, and wait until it softens, and remove it to a bowl as soon as it softens. Chop the onions, put them in the pan until they are browned. Mix the zucchini with the onion in a bowl together, add salt and pepper. And before serving, you can grate a hard-boiled egg inside.",
+        image_url: null,
+      },
+    ];
+
+    const recipe = defaultFamilyRecipes.find((r) => r.recipe_id === recipe_id);
+    if (!recipe) {
+      throw { status: 404, message: "Default family recipe not found" };
+    }
+
+    return {
+      recipe_id: recipe.recipe_id,
+      id: recipe.recipe_id,
+      title: recipe.recipe_name,
+      image:
+        recipe.image_url ||
+        `https://placehold.co/600x400?text=${encodeURIComponent(
+          recipe.recipe_name
+        )}`,
+      owner: recipe.owner_name,
+      whenToMake: recipe.when_to_prepare,
+      ingredients: recipe.ingredients ? JSON.parse(recipe.ingredients) : [],
+      instructions: recipe.instructions,
+      readyInMinutes: "N/A",
+      servings: "N/A",
+    };
+  }
+
+  // Handle regular database recipes
+  const recipes_result = await DButils.execQuery(
     `SELECT * FROM family_recipes WHERE recipe_id=${recipe_id} AND user_id=${user_id}`
   );
-  // mysql2 returns [rows, fields], so use [0]
-  if (!recipes[0] || recipes[0].length === 0) {
+
+  const recipes = Array.isArray(recipes_result[0])
+    ? recipes_result[0]
+    : recipes_result;
+
+  if (!recipes || recipes.length === 0) {
     throw { status: 404, message: "Family recipe not found" };
   }
-  const recipe = recipes[0][0];
+  const recipe = recipes[0];
   return {
+    recipe_id: recipe.recipe_id,
     id: recipe.recipe_id,
     title: recipe.recipe_name,
-    image: recipe.image_url,
+    image:
+      recipe.image_url ||
+      `https://placehold.co/600x400?text=${encodeURIComponent(
+        recipe.recipe_name
+      )}`,
     owner: recipe.owner_name,
-    when: recipe.when_to_prepare,
-    ingredients: JSON.parse(recipe.ingredients),
+    whenToMake: recipe.when_to_prepare,
+    ingredients: recipe.ingredients ? JSON.parse(recipe.ingredients) : [],
     instructions: recipe.instructions,
+    readyInMinutes: recipe.readyInMinutes || "N/A",
+    servings: recipe.servings || "N/A",
   };
 }
 
@@ -518,6 +705,87 @@ async function addFamilyRecipe(user_id, recipe_details) {
   }
 }
 
+/**
+ * Saves a user's search history (last search)
+ *
+ * @param {number} user_id - The ID of the user
+ * @param {string} search_query - The search query text
+ * @param {Object} search_params - Search parameters (cuisine, diet, intolerance, sort, number)
+ * @param {Array} search_results - Array of search results
+ * @returns {Promise<void>} - A promise that resolves when the search history is saved
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
+async function saveSearchHistory(
+  user_id,
+  search_query,
+  search_params,
+  search_results
+) {
+  try {
+    const params_json = JSON.stringify(search_params);
+    const results_json = JSON.stringify(search_results);
+
+    // Use REPLACE INTO to update existing record or insert new one
+    await DButils.execQuery(
+      `REPLACE INTO user_search_history (user_id, search_query, search_params, search_results) 
+       VALUES (${user_id}, '${search_query.replace(
+        /'/g,
+        "''"
+      )}', '${params_json.replace(/'/g, "''")}', '${results_json.replace(
+        /'/g,
+        "''"
+      )}')`
+    );
+  } catch (error) {
+    console.log(
+      `Error saving search history for user ${user_id}: ${error.message}`
+    );
+    throw {
+      status: 500,
+      message: "Failed to save search history",
+      error: error,
+    };
+  }
+}
+
+/**
+ * Retrieves a user's last search history
+ *
+ * @param {number} user_id - The ID of the user
+ * @returns {Promise<Object|null>} - A promise that resolves to the search history object or null if none found
+ * @throws {Object} - Throws an error object if the database operation fails
+ */
+async function getSearchHistory(user_id) {
+  try {
+    const result = await DButils.execQuery(
+      `SELECT search_query, search_params, search_results, searched_at 
+       FROM user_search_history 
+       WHERE user_id = ${user_id}`
+    );
+
+    if (result[0] && result[0].length > 0) {
+      const history = result[0][0];
+      return {
+        search_query: history.search_query,
+        search_params: JSON.parse(history.search_params),
+        search_results: JSON.parse(history.search_results),
+        searched_at: history.searched_at,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.log(
+      `Error retrieving search history for user ${user_id}: ${error.message}`
+    );
+    throw {
+      status: 500,
+      message: "Failed to retrieve search history",
+      error: error,
+    };
+  }
+}
+
 exports.markAsFavorite = markAsFavorite;
 exports.getFavoriteRecipes = getFavoriteRecipes;
 exports.removeFavorite = removeFavorite;
@@ -531,3 +799,118 @@ exports.getPrivateRecipeDetails = getPrivateRecipeDetails;
 exports.getAllFamilyRecipes = getAllFamilyRecipes;
 exports.getFamilyRecipeDetails = getFamilyRecipeDetails;
 exports.addFamilyRecipe = addFamilyRecipe;
+exports.saveSearchHistory = saveSearchHistory;
+exports.getSearchHistory = getSearchHistory;
+exports.deletePrivateRecipe = deletePrivateRecipe;
+
+/**
+ * Deletes a family recipe created by the user
+ *
+ * @param {string | number} user_id - The ID of the user.
+ * @param {string | number} recipe_id - The ID of the family recipe to delete.
+ * @returns {Promise<boolean>} - True if successful, throws error otherwise.
+ * @throws {Object} - An error object with status and message properties.
+ */
+async function deleteFamilyRecipe(user_id, recipe_id) {
+  const parsedUserId = parseInt(user_id);
+  const parsedRecipeId = parseInt(recipe_id);
+
+  if (isNaN(parsedUserId) || isNaN(parsedRecipeId)) {
+    console.error(
+      `Invalid ID format for deletion: user_id='${user_id}', recipe_id='${recipe_id}'`
+    );
+    throw { status: 400, message: "Invalid user ID or recipe ID format." };
+  }
+
+  try {
+    // First, check if the recipe exists and belongs to the user
+    const recipes = await DButils.execQuery(
+      `SELECT * FROM family_recipes WHERE recipe_id=${parsedRecipeId} AND user_id=${parsedUserId}`
+    );
+
+    // Assuming recipes[0] contains the array of rows.
+    if (!recipes || !recipes[0] || recipes[0].length === 0) {
+      throw {
+        status: 404,
+        message: "Family recipe not found or not owned by user.",
+      };
+    }
+
+    // Delete the recipe
+    await DButils.execQuery(
+      `DELETE FROM family_recipes WHERE recipe_id=${parsedRecipeId} AND user_id=${parsedUserId}`
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      `Error deleting family recipe ${parsedRecipeId} for user ${parsedUserId}: ${error.message}`
+    );
+    if (error.status) {
+      throw error;
+    } else {
+      throw {
+        status: 500,
+        message: "Failed to delete family recipe due to a server error.",
+      };
+    }
+  }
+}
+exports.deleteFamilyRecipe = deleteFamilyRecipe;
+
+/**
+ * Deletes a private recipe created by the user
+ *
+ * @param {string | number} user_id - The ID of the user.
+ * @param {string | number} recipe_id - The ID of the private recipe to delete.
+ * @returns {Promise<boolean>} - True if successful, throws error otherwise.
+ * @throws {Object} - An error object with status and message properties.
+ */
+async function deletePrivateRecipe(user_id, recipe_id) {
+  const parsedUserId = parseInt(user_id);
+  const parsedRecipeId = parseInt(recipe_id);
+
+  if (isNaN(parsedUserId) || isNaN(parsedRecipeId)) {
+    console.error(
+      `Invalid ID format for deletion: user_id='${user_id}', recipe_id='${recipe_id}'`
+    );
+    throw { status: 400, message: "Invalid user ID or recipe ID format." };
+  }
+
+  try {
+    // First, check if the recipe exists and belongs to the user
+    // Ensure to use parsedRecipeId and parsedUserId in your SQL queries
+    const recipes = await DButils.execQuery(
+      `SELECT * FROM private_recipes WHERE recipe_id=${parsedRecipeId} AND user_id=${parsedUserId}`
+    );
+
+    // Check the structure of 'recipes' based on how DButils.execQuery returns data.
+    // Assuming recipes[0] contains the array of rows.
+    if (!recipes || !recipes[0] || recipes[0].length === 0) {
+      throw { status: 404, message: "Recipe not found or not owned by user." };
+    }
+
+    // Delete the recipe
+    await DButils.execQuery(
+      `DELETE FROM private_recipes WHERE recipe_id=${parsedRecipeId} AND user_id=${parsedUserId}`
+    );
+
+    return true;
+  } catch (error) {
+    // Log with parsed IDs for consistency
+    console.error(
+      `Error deleting private recipe ${parsedRecipeId} for user ${parsedUserId}: ${error.message}`
+    );
+    // If the error already has a status (like our 400 or 404), re-throw it.
+    // Otherwise, wrap it in a generic 500 error.
+    if (error.status) {
+      throw error;
+    } else {
+      // Provide a more specific message if possible, or keep it generic for security.
+      throw {
+        status: 500,
+        message: "Failed to delete recipe due to a server error.",
+      };
+    }
+  }
+}
